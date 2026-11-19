@@ -1,0 +1,43 @@
+{
+  "company": "Ayo Payroll",
+  "totalCustomers": 41,
+  "summary": {
+    "noticePeriodDistribution": {
+      "30_calendar_days": 33,
+      "60_calendar_days": 6,
+      "30_business_days": 1,
+      "unclear": 1
+    },
+    "terminationRemedyCount": 2,
+    "locationRestrictionEUUKCount": 3,
+    "longestNoticeDays": 60
+  },
+  "publishedVendorsCount": 9,
+  "plantedCases": {
+    "ENG-142": {
+      "classification": "NEW_SUBPROCESSOR",
+      "vendor": "Glimpse",
+      "affectedCount": 41,
+      "longestNoticeDays": 60,
+      "terminationRightsCount": 2,
+      "locationConflictsCount": 3,
+      "blocksDeployment": true
+    },
+    "ENG-151": {
+      "classification": "EXISTING_VENDOR_NO_CHANGE",
+      "vendor": "ErrorSentry",
+      "blocksDeployment": false
+    },
+    "ENG-156": {
+      "classification": "LOCATION_CHANGE",
+      "vendor": "RelayPost",
+      "affectedCount": 3,
+      "blocksDeployment": true
+    },
+    "ENG-160": {
+      "classification": "NO_CUSTOMER_DATA",
+      "vendor": "Glimpse",
+      "blocksDeployment": false
+    }
+  }
+}
