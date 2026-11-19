@@ -178,7 +178,7 @@ const IssuePanelApp = () => {
           title={`Third-Party Tool (${assessment.vendor || 'Third Party'}) with No Customer Data`}
         >
           <Text>
-            This ticket mentions vendor <strong>{assessment.vendor || 'third party'}</strong> in a staging or synthetic data context. No customer personal data is processed.
+            This ticket mentions vendor {assessment.vendor || 'third party'} in a staging or synthetic data context. No customer personal data is processed.
           </Text>
           {confirmedNoData ? (
             <Lozenge appearance="success">Confirmed: Synthetic Data Only</Lozenge>
@@ -215,10 +215,7 @@ const IssuePanelApp = () => {
             </Inline>
 
             <Text>
-              Existing vendor <strong>{assessment.vendor || 'RelayPost'}</strong> is changing data processing location from the EU to the US.{' '}
-              <Text weight="bold" as="strong">
-                3 customer DPAs forbid processing outside the EU/UK:
-              </Text>
+              Existing vendor {assessment.vendor || 'RelayPost'} is changing data processing location from the EU to the US. 3 customer DPAs forbid processing outside the EU/UK:
             </Text>
 
             <Box padding="space.100" backgroundColor="color.background.neutral.subtle">
@@ -270,19 +267,7 @@ const IssuePanelApp = () => {
           </Inline>
 
           <Text>
-            This ticket introduces a new subprocessor.{' '}
-            <Text weight="bold" as="strong">
-              {assessment.affectedCustomers || 41} customer DPAs apply:
-            </Text>{' '}
-            33 require 30 days notice, 6 require 60 days notice, and{' '}
-            <Text weight="bold" as="strong">
-              {assessment.terminationRightsCount || 2} customers hold objection-and-termination rights
-            </Text>
-            .{' '}
-            <Text weight="bold" as="strong">
-              {assessment.locationConflictsCount || 3} customers forbid processing outside the EU
-            </Text>
-            ; this vendor stores data in the US.
+            This ticket introduces a new subprocessor. {assessment.affectedCustomers || 41} customer DPAs apply: 33 require 30 days notice, 6 require 60 days notice, and {assessment.terminationRightsCount || 2} customers hold objection-and-termination rights. {assessment.locationConflictsCount || 3} customers forbid processing outside the EU; this vendor stores data in the US.
           </Text>
 
           {/* Quiet accent single date box */}
@@ -351,12 +336,10 @@ const IssuePanelApp = () => {
                 <Lozenge appearance="success">Confirmed by Counsel</Lozenge>
               </Inline>
               <Text size="small">
-                <em>
-                  &ldquo;
-                  {assessment.sampleClauseQuote ||
-                    'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.'}
-                  &rdquo;
-                </em>
+                &ldquo;
+                {assessment.sampleClauseQuote ||
+                  'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.'}
+                &rdquo;
               </Text>
             </Stack>
           </Box>

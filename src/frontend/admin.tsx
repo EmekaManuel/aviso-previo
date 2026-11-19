@@ -182,14 +182,14 @@ const AdminApp = () => {
         <SectionMessage appearance="success" title="Phase 3: DPA Extraction Benchmark Scorecard (All 41 Contracts)">
           <Stack space="space.100">
             <Inline space="space.200" spread="space-between">
-              <Text>Notice Period Accuracy: <strong>{state.benchmarkScore.noticePeriodAccuracy}</strong></Text>
-              <Text>Unit Accuracy (Calendar/Biz): <strong>{state.benchmarkScore.unitAccuracy}</strong></Text>
-              <Text>Termination Recall: <strong>{state.benchmarkScore.terminationRecall}</strong></Text>
+              <Text>Notice Period Accuracy: {state.benchmarkScore.noticePeriodAccuracy}</Text>
+              <Text>Unit Accuracy (Calendar/Biz): {state.benchmarkScore.unitAccuracy}</Text>
+              <Text>Termination Recall: {state.benchmarkScore.terminationRecall}</Text>
             </Inline>
             <Inline space="space.200" spread="space-between">
-              <Text>Location Limits: <strong>{state.benchmarkScore.locationLimitRecall}</strong></Text>
-              <Text>Zero Hallucination Rate: <strong>{state.benchmarkScore.zeroHallucinationRate}</strong></Text>
-              <Text>Unclear Rule: <strong>{state.benchmarkScore.unclearHandling}</strong></Text>
+              <Text>Location Limits: {state.benchmarkScore.locationLimitRecall}</Text>
+              <Text>Zero Hallucination Rate: {state.benchmarkScore.zeroHallucinationRate}</Text>
+              <Text>Unclear Rule: {state.benchmarkScore.unclearHandling}</Text>
             </Inline>
             <Text size="small" color="color.text.subtlest">
               Verified against answer key: 0 wrong-but-confident errors. Ready for Devpost submission.
@@ -204,10 +204,10 @@ const AdminApp = () => {
           1. Review the 41 customer DPAs below. Notice 2 customers hold termination remedies (Nordic Logistics &amp; Caledonia Finance), and 3 restrict data to the EU/UK.
         </Text>
         <Text>
-          2. Create a ticket in project <strong>ENG</strong> with: <em>&ldquo;Add session replay to payslip screen using Glimpse&rdquo;</em> (adds new vendor). Notice the 60-day hold panel.
+          2. Create a ticket in project ENG with: &ldquo;Add session replay to payslip screen using Glimpse&rdquo; (adds new vendor). Notice the 60-day hold panel.
         </Text>
         <Text>
-          3. Now create a ticket: <em>&ldquo;Upgrade ErrorSentry SDK to v8&rdquo;</em> (existing vendor). Notice: no panel is triggered.
+          3. Now create a ticket: &ldquo;Upgrade ErrorSentry SDK to v8&rdquo; (existing vendor). Notice: no panel is triggered.
         </Text>
       </SectionMessage>
 
@@ -324,7 +324,7 @@ const AdminApp = () => {
                     backgroundColor="color.background.neutral.subtle"
                   >
                     <Text size="small">
-                      <em>&ldquo;{dpa.exactClause}&rdquo;</em>
+                      &ldquo;{dpa.exactClause}&rdquo;
                     </Text>
                   </Box>
                 </Stack>
