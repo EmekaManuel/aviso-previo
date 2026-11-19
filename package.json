@@ -5,7 +5,9 @@
   "description": "Aviso Previo — Subprocessor notice and DPA compliance for Jira & Confluence (Codegeist 2026)",
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "forge lint"
+    "lint": "forge lint",
+    "test": "node scripts/score-extraction.js",
+    "test:extraction": "node scripts/score-extraction.js"
   },
   "dependencies": {
     "@forge/api": "^8.5.0",
