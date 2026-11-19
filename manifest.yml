@@ -1,0 +1,36 @@
+modules:
+  jira:issuePanel:
+    - key: aviso-previo-issue-panel
+      title: Aviso Previo
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+      render: native
+      resource: main
+      resolver:
+        function: resolver
+  jira:workflowValidator:
+    - key: aviso-previo-release-validator
+      name: Aviso Previo Subprocessor Hold
+      description: Blocks deployment transitions before customer DPA notice windows expire
+      function: release-validator-func
+  llm:
+    - key: aviso-previo-llm
+      model:
+        - claude
+resources:
+  - key: main
+    path: src/frontend/index.tsx
+functions:
+  - key: resolver
+    handler: src/resolvers/index.handler
+  - key: release-validator-func
+    handler: src/validator/index.validateTransition
+app:
+  id: ari:cloud:ecosystem::app/c87d1785-dac4-4a36-86e1-60211a5f44e6
+  runtime:
+    name: nodejs22.x
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
+    - read:page:confluence
+    - storage:app

@@ -1,0 +1,25 @@
+{
+  "name": "aviso-previo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aviso Previo — Subprocessor notice and DPA compliance for Jira & Confluence (Codegeist 2026)",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "forge lint"
+  },
+  "dependencies": {
+    "@forge/api": "^8.5.0",
+    "@forge/bridge": "^7.3.0",
+    "@forge/kvs": "^2.1.2",
+    "@forge/llm": "^1.0.10",
+    "@forge/react": "^12.5.0",
+    "@forge/resolver": "^2.0.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "typescript": "^5.3.3"
+  }
+}
