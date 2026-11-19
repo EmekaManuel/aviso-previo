@@ -191,3 +191,4 @@ forge install --site <your-site>.atlassian.net --product confluence
 ## 7. License
 
 MIT License. Built for Atlassian Codegeist 2026.
+

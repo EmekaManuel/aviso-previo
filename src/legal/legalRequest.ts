@@ -127,3 +127,4 @@ export async function createOrFetchLegalRequest(
     draftEmailBody: body,
   };
 }
+

@@ -152,3 +152,4 @@ We built comprehensive benchmark evaluation suites to rigorously measure Aviso P
 - **Atlassian Teamwork Graph Integration**: Querying PRs and commits in Bitbucket to cross-reference `package.json` dependency additions with Jira tickets.
 - **Customer Objection Portal**: A customer-facing portal in Jira Service Management where enterprise clients can view subprocessor notices and record objections directly.
 - **Contract PDF Parsing**: Ingesting scanned PDF agreements via Atlassian Document APIs.
+
