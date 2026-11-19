@@ -19,6 +19,67 @@ modules:
       name: Aviso Previo Subprocessor Hold
       description: Blocks deployment transitions before customer DPA notice windows expire
       function: release-validator-func
+  # rovo:agent:
+  #   - key: aviso-previo-agent
+  #     name: Aviso Previo
+  #     description: Monitors subprocessor compliance, checks customer DPA notice commitments, explains verbatim contract clauses, and coordinates privacy notice holds.
+  #     prompt: >
+  #       You are Aviso Previo, a subprocessor compliance agent for Ayo Payroll.
+  #     actions:
+  #       - check-subprocessor-commitments
+  #       - explain-customer-term
+  #       - open-privacy-notice-request
+  rovo:mcp:
+    - key: aviso-previo-mcp
+      name: Aviso Previo Compliance Tools
+      tools:
+        - check-subprocessor-commitments
+        - explain-customer-term
+        - open-privacy-notice-request
+  action:
+    - key: check-subprocessor-commitments
+      name: Check Subprocessor Commitments
+      function: check-subprocessor-func
+      actionVerb: GET
+      description: Checks customer DPAs for notice periods, objection windows, termination rights, location conflicts, and calculates earliest permitted deployment date for a subprocessor.
+      inputs:
+        vendor:
+          title: Vendor Name
+          type: string
+          required: true
+          description: Name of the third-party subprocessor (e.g. Glimpse, RelayPost, ErrorSentry).
+        hostingLocation:
+          title: Hosting Location
+          type: string
+          required: false
+          description: Geographic location where the vendor hosts customer data (e.g. United States, EU).
+    - key: explain-customer-term
+      name: Explain Customer Contract Term
+      function: explain-term-func
+      actionVerb: GET
+      description: Returns verbatim clause quote, notice days, unit, objection window, and termination remedies for a specific customer DPA.
+      inputs:
+        customerName:
+          title: Customer Name
+          type: string
+          required: true
+          description: Customer name or contract ID (e.g. Nordic Logistics AS, Caledonia Finance, CUST-001).
+    - key: open-privacy-notice-request
+      name: Open Privacy Notice Request
+      function: open-notice-func
+      actionVerb: CREATE
+      description: Creates a formal privacy notice request ticket and drafts customer notification text for Privacy Counsel.
+      inputs:
+        issueKey:
+          title: Jira Issue Key
+          type: string
+          required: true
+          description: The Jira ticket introducing the subprocessor change (e.g. ENG-142).
+        vendor:
+          title: Vendor Name
+          type: string
+          required: true
+          description: Name of the subprocessor.
   llm:
     - key: aviso-previo-llm
       model:
@@ -28,6 +89,12 @@ modules:
       handler: index.handler
     - key: release-validator-func
       handler: index.validateTransition
+    - key: check-subprocessor-func
+      handler: index.checkSubprocessorAction
+    - key: explain-term-func
+      handler: index.explainTermAction
+    - key: open-notice-func
+      handler: index.openNoticeAction
 resources:
   - key: main
     path: src/frontend/index.tsx

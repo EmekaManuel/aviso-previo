@@ -5,6 +5,8 @@ import { chat } from '@forge/llm';
 import { runFullAyoPayrollSeed } from '../seed/seedEngine';
 import { CUSTOMER_DPAS, PUBLISHED_VENDORS } from '../data/seedData';
 import { classifyTicket } from '../classification/ticketClassifier';
+import { createOrFetchLegalRequest, generateDraftCustomerNotice } from '../legal/legalRequest';
+import { calculateEarliestGoLive } from '../engine/dateCalculator';
 
 const resolver = new Resolver();
 
@@ -150,7 +152,7 @@ resolver.define('getIssueAssessment', async (req) => {
     console.warn(`Could not fetch live issue ${issueKey}:`, e.message);
   }
 
-  // Fallbacks if live issue details not found (e.g. testing with planted keys)
+  // Fallbacks if live issue details not found
   if (!summary) {
     if (issueKey === 'ENG-151') {
       summary = 'Upgrade ErrorSentry SDK to v8';
@@ -173,13 +175,15 @@ resolver.define('getIssueAssessment', async (req) => {
   let locationConflictsCount = 0;
 
   if (classificationResult.classification === 'NEW_SUBPROCESSOR') {
-    earliestGoLiveDate = '19 January 2027';
+    const calc = calculateEarliestGoLive(CUSTOMER_DPAS, new Date(), true);
+    earliestGoLiveDate = calc.formattedDate;
     affectedCustomers = 41;
-    longestNoticeDays = 60;
-    terminationRightsCount = 2;
-    locationConflictsCount = 3;
+    longestNoticeDays = calc.longestNoticeDays;
+    terminationRightsCount = calc.customersWithTermination.length;
+    locationConflictsCount = calc.customersWithLocationConflicts.length;
   } else if (classificationResult.classification === 'LOCATION_CHANGE') {
-    earliestGoLiveDate = '19 January 2027';
+    const calc = calculateEarliestGoLive(CUSTOMER_DPAS, new Date(), true);
+    earliestGoLiveDate = calc.formattedDate;
     affectedCustomers = 3;
     longestNoticeDays = 60;
     locationConflictsCount = 3;
@@ -195,6 +199,14 @@ resolver.define('getIssueAssessment', async (req) => {
     locationConflictsCount,
     earliestGoLiveDate,
     legalRequestKey: classificationResult.classification === 'NEW_SUBPROCESSOR' ? 'PRIV-18' : undefined,
+    draftNotice: (classificationResult.classification === 'NEW_SUBPROCESSOR' || classificationResult.classification === 'LOCATION_CHANGE')
+      ? generateDraftCustomerNotice(
+          classificationResult.vendor || 'Glimpse',
+          summary,
+          'United States',
+          earliestGoLiveDate
+        )
+      : null,
     aiReason: classificationResult.reasoning,
     sampleClauseCustomer: 'Nordic Logistics AS',
     sampleClauseQuote:
@@ -208,8 +220,19 @@ resolver.define('getIssueAssessment', async (req) => {
 });
 
 /**
- * Human Override Resolver:
- * Allows engineer or counsel to record an override with justification.
+ * Create or Fetch Legal JSM Request
+ */
+resolver.define('createLegalNoticeRequest', async (req) => {
+  const { issueKey, vendor, earliestDate } = req.payload as {
+    issueKey: string;
+    vendor: string;
+    earliestDate: string;
+  };
+  return await createOrFetchLegalRequest(issueKey, vendor, earliestDate);
+});
+
+/**
+ * Human Override Resolver
  */
 resolver.define('overrideIssueDecision', async (req) => {
   const { issueKey, overrideReason } = req.payload as { issueKey: string; overrideReason: string };

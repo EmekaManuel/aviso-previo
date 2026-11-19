@@ -29,6 +29,7 @@ interface IssueAssessment {
   conflictingCustomers?: string[];
   earliestGoLiveDate?: string;
   legalRequestKey?: string;
+  draftNotice?: { subject: string; body: string } | null;
   aiReason?: string;
   requiresNotice?: boolean;
   sampleClauseCustomer?: string;
@@ -42,6 +43,8 @@ const IssuePanelApp = () => {
   const [loading, setLoading] = useState(true);
   const [assessment, setAssessment] = useState<IssueAssessment | null>(null);
   const [showOverrideInput, setShowOverrideInput] = useState(false);
+  const [showDraftNotice, setShowDraftNotice] = useState(false);
+  const [requestingLegal, setRequestingLegal] = useState(false);
   const [overrideText, setOverrideText] = useState('');
   const [confirmedNoData, setConfirmedNoData] = useState(false);
 
@@ -79,6 +82,27 @@ const IssuePanelApp = () => {
 
   const handleConfirmSynthetic = () => {
     setConfirmedNoData(true);
+  };
+
+  const handleCreateLegalNotice = async () => {
+    if (!assessment) return;
+    setRequestingLegal(true);
+    try {
+      const res: any = await invoke('createLegalNoticeRequest', {
+        issueKey: assessment.issueKey,
+        vendor: assessment.vendor || 'Glimpse',
+        earliestDate: assessment.earliestGoLiveDate || '19 January 2027',
+      });
+      if (res?.requestKey) {
+        setAssessment((prev) =>
+          prev ? { ...prev, legalRequestKey: res.requestKey } : null
+        );
+      }
+    } catch (err) {
+      console.error('Error creating legal notice request:', err);
+    } finally {
+      setRequestingLegal(false);
+    }
   };
 
   const handleApplyOverride = async () => {
@@ -271,13 +295,48 @@ const IssuePanelApp = () => {
                 <Text weight="semibold">Earliest permitted go-live:</Text>
                 <Badge appearance="added">{assessment.earliestGoLiveDate || '19 January 2027'}</Badge>
               </Inline>
-              {assessment.legalRequestKey && (
-                <Text size="small">
-                  Privacy Request: <strong>{assessment.legalRequestKey}</strong>
-                </Text>
+              {assessment.legalRequestKey ? (
+                <Inline space="space.050" alignBlock="center">
+                  <Text size="small">Privacy Request:</Text>
+                  <Lozenge appearance="inprogress">{assessment.legalRequestKey}</Lozenge>
+                </Inline>
+              ) : (
+                <Button
+                  appearance="primary"
+                  onClick={handleCreateLegalNotice}
+                  isDisabled={requestingLegal}
+                >
+                  {requestingLegal ? 'Opening Request...' : 'Notify Privacy Counsel'}
+                </Button>
               )}
             </Inline>
           </Box>
+
+          {/* Draft Notice Email Action and View */}
+          <Inline space="space.100" alignBlock="center">
+            <Button appearance="subtle" onClick={() => setShowDraftNotice(!showDraftNotice)}>
+              {showDraftNotice ? 'Hide Draft Customer Notice' : 'View Draft Customer Notice'}
+            </Button>
+          </Inline>
+
+          {showDraftNotice && (
+            <Box padding="space.150" backgroundColor="color.background.neutral.subtle">
+              <Stack space="space.100">
+                <Text weight="semibold" size="small">
+                  Generated Notice Draft (Ready for Privacy Counsel):
+                </Text>
+                <Text size="small" weight="bold">
+                  Subject: {assessment.draftNotice?.subject || `[Prior Notice] Notice of New Subprocessor Appointment — Ayo Payroll`}
+                </Text>
+                <Box padding="space.100" backgroundColor="color.background.neutral.subtle">
+                  <Text size="small">
+                    {assessment.draftNotice?.body ||
+                      `Dear Customer,\n\nPursuant to Section 7 of our Data Processing Agreement (DPA), this communication serves as prior written notice that Ayo Payroll Ltd intends to authorize the following third-party subprocessor:\n\n• Subprocessor Name: ${assessment.vendor || 'Glimpse'}\n• Purpose: Session replay debugging for authenticated payslips\n• Hosting Location: United States\n• Earliest Permitted Deployment: ${assessment.earliestGoLiveDate || '19 January 2027'}\n\nPlease contact privacy@ayopayroll.com before the deployment date above.`}
+                  </Text>
+                </Box>
+              </Stack>
+            </Box>
+          )}
 
           {/* Clause quote excerpt in serif box */}
           <Box
