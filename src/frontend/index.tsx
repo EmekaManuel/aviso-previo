@@ -12,160 +12,274 @@ import ForgeReconciler, {
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
-interface SpikeState {
-  loading: boolean;
-  llmStatus: {
-    status: 'idle' | 'running' | 'success' | 'error';
-    model?: string;
-    sampleOutput?: string;
-    inputTokens?: number;
-    outputTokens?: number;
-    error?: string;
-  };
-  confluenceStatus: {
-    status: 'idle' | 'running' | 'success' | 'error';
-    sampleTitle?: string;
-    error?: string;
-  };
-  validatorStatus: {
-    ruleActive: boolean;
-    sampleUnlockDate: string;
-    targetStatus: string;
-  };
-  sampleNoticeData: {
-    vendor: string;
-    affectedCount: number;
-    longestNoticeDays: number;
-    terminationCount: number;
-    locationConflictCount: number;
-    earliestGoLive: string;
-    sampleClauseCustomer: string;
-    sampleClauseQuote: string;
-  };
+interface IssueAssessment {
+  issueKey: string;
+  classification:
+    | 'NEW_SUBPROCESSOR'
+    | 'EXISTING_VENDOR_NO_CHANGE'
+    | 'LOCATION_CHANGE'
+    | 'NO_CUSTOMER_DATA'
+    | 'UNRELATED';
+  vendor?: string | null;
+  purpose?: string;
+  affectedCustomers?: number;
+  longestNoticeDays?: number;
+  terminationRightsCount?: number;
+  locationConflictsCount?: number;
+  conflictingCustomers?: string[];
+  earliestGoLiveDate?: string;
+  legalRequestKey?: string;
+  aiReason?: string;
+  requiresNotice?: boolean;
+  sampleClauseCustomer?: string;
+  sampleClauseQuote?: string;
+  overridden?: boolean;
+  overriddenBy?: string;
+  overrideReason?: string;
 }
 
-const App = () => {
-  const [data, setData] = useState<SpikeState>({
-    loading: true,
-    llmStatus: { status: 'idle' },
-    confluenceStatus: { status: 'idle' },
-    validatorStatus: {
-      ruleActive: true,
-      sampleUnlockDate: '2027-01-19',
-      targetStatus: 'Deployed',
-    },
-    sampleNoticeData: {
-      vendor: 'Glimpse (fictional)',
-      affectedCount: 41,
-      longestNoticeDays: 60,
-      terminationCount: 2,
-      locationConflictCount: 3,
-      earliestGoLive: '19 January 2027',
-      sampleClauseCustomer: 'Nordic Logistics AS',
-      sampleClauseQuote:
-        'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.',
-    },
-  });
-
-  const [testingLLM, setTestingLLM] = useState(false);
+const IssuePanelApp = () => {
+  const [loading, setLoading] = useState(true);
+  const [assessment, setAssessment] = useState<IssueAssessment | null>(null);
+  const [showOverrideInput, setShowOverrideInput] = useState(false);
+  const [overrideText, setOverrideText] = useState('');
+  const [confirmedNoData, setConfirmedNoData] = useState(false);
 
   useEffect(() => {
-    invoke<any>('getSpikeStatus')
-      .then((res) => {
-        setData((prev) => ({
-          ...prev,
-          loading: false,
-          llmStatus: res.llmStatus || prev.llmStatus,
-          confluenceStatus: res.confluenceStatus || prev.confluenceStatus,
-        }));
+    invoke<any>('getIssueAssessment')
+      .then((data) => {
+        setAssessment(data as IssueAssessment);
+        setLoading(false);
       })
       .catch((err) => {
-        setData((prev) => ({
-          ...prev,
-          loading: false,
-          llmStatus: {
-            status: 'idle',
-            sampleOutput: 'Ready to invoke Atlassian Claude via @forge/llm.',
-          },
-          confluenceStatus: {
-            status: 'idle',
-            sampleTitle: 'Confluence integration configured (REST API v2).',
-          },
-        }));
+        console.error('Error fetching issue assessment:', err);
+        // Fallback for default spike view
+        setAssessment({
+          issueKey: 'ENG-142',
+          classification: 'NEW_SUBPROCESSOR',
+          vendor: 'Glimpse',
+          affectedCustomers: 41,
+          longestNoticeDays: 60,
+          terminationRightsCount: 2,
+          locationConflictsCount: 3,
+          conflictingCustomers: [
+            'Nordic Logistics AS (Norway)',
+            'Bavaria HealthTech GmbH (Germany)',
+            'Stockholm Retail Group AB (Sweden)',
+          ],
+          earliestGoLiveDate: '19 January 2027',
+          legalRequestKey: 'PRIV-18',
+          sampleClauseCustomer: 'Nordic Logistics AS',
+          sampleClauseQuote:
+            'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.',
+        });
+        setLoading(false);
       });
   }, []);
 
-  const runLLMTest = async () => {
-    setTestingLLM(true);
+  const handleConfirmSynthetic = () => {
+    setConfirmedNoData(true);
+  };
+
+  const handleApplyOverride = async () => {
+    if (!assessment || !overrideText.trim()) return;
     try {
-      const res = await invoke<any>('testLLM');
-      setData((prev) => ({
-        ...prev,
-        llmStatus: {
-          status: 'success',
-          model: res.model || 'claude-haiku-4-5',
-          sampleOutput: res.output,
-          inputTokens: res.inputTokens,
-          outputTokens: res.outputTokens,
-        },
-      }));
-    } catch (e: any) {
-      setData((prev) => ({
-        ...prev,
-        llmStatus: {
-          status: 'error',
-          error: e.message || 'LLM execution encountered an issue',
-        },
-      }));
-    } finally {
-      setTestingLLM(false);
+      await invoke('overrideIssueDecision', {
+        issueKey: assessment.issueKey,
+        overrideReason: overrideText,
+      });
+      setAssessment((prev) =>
+        prev
+          ? {
+              ...prev,
+              overridden: true,
+              overriddenBy: 'Engineer / Counsel',
+              overrideReason: overrideText,
+            }
+          : null
+      );
+      setShowOverrideInput(false);
+    } catch (e) {
+      console.error('Override error:', e);
     }
   };
 
+  if (loading) {
+    return <Text>Analyzing contract commitments...</Text>;
+  }
+
+  if (!assessment) {
+    return null;
+  }
+
+  // State 1: EXISTING VENDOR NO CHANGE or UNRELATED (Quiet state)
+  if (
+    assessment.classification === 'EXISTING_VENDOR_NO_CHANGE' ||
+    assessment.classification === 'UNRELATED'
+  ) {
+    return (
+      <Stack space="space.150">
+        <SectionMessage appearance="discovery">
+          <Text weight="bold">Sample data · Fictional</Text>
+          <Text>Aviso Previo subprocessor compliance monitor for Ayo Payroll.</Text>
+        </SectionMessage>
+        <Box padding="space.100" backgroundColor="color.background.neutral.subtle">
+          <Inline space="space.100" alignBlock="center">
+            <Lozenge appearance="success">Approved Subprocessor Status</Lozenge>
+            <Text size="small">
+              {assessment.classification === 'EXISTING_VENDOR_NO_CHANGE'
+                ? `Routine maintenance for approved vendor ${assessment.vendor || 'existing vendor'}. No new customer notice obligations triggered.`
+                : 'No third-party data processing changes detected on this ticket.'}
+            </Text>
+          </Inline>
+        </Box>
+        <Text size="small" color="color.text.subtlest">
+          Aviso Previo summarizes your contracts. It is not legal advice.
+        </Text>
+      </Stack>
+    );
+  }
+
+  // State 2: NO CUSTOMER DATA (e.g. ENG-160 sandbox testing)
+  if (assessment.classification === 'NO_CUSTOMER_DATA') {
+    return (
+      <Stack space="space.150">
+        <SectionMessage appearance="discovery">
+          <Text weight="bold">Sample data · Fictional</Text>
+          <Text>Aviso Previo subprocessor compliance monitor for Ayo Payroll.</Text>
+        </SectionMessage>
+
+        <SectionMessage
+          appearance={confirmedNoData ? 'success' : 'information'}
+          title={`Third-Party Tool (${assessment.vendor || 'Third Party'}) with No Customer Data`}
+        >
+          <Text>
+            This ticket mentions vendor <strong>{assessment.vendor || 'third party'}</strong> in a staging or synthetic data context. No customer personal data is processed.
+          </Text>
+          {confirmedNoData ? (
+            <Lozenge appearance="success">Confirmed: Synthetic Data Only</Lozenge>
+          ) : (
+            <Box padding="space.050">
+              <Button appearance="primary" onClick={handleConfirmSynthetic}>
+                Confirm: Synthetic Data Only (No Notice Required)
+              </Button>
+            </Box>
+          )}
+        </SectionMessage>
+
+        <Text size="small" color="color.text.subtlest">
+          Aviso Previo summarizes your contracts. It is not legal advice.
+        </Text>
+      </Stack>
+    );
+  }
+
+  // State 3: LOCATION CHANGE (e.g. ENG-156 EU -> US)
+  if (assessment.classification === 'LOCATION_CHANGE') {
+    return (
+      <Stack space="space.200">
+        <SectionMessage appearance="discovery">
+          <Text weight="bold">Sample data · Fictional</Text>
+          <Text>Aviso Previo subprocessor compliance monitor for Ayo Payroll.</Text>
+        </SectionMessage>
+
+        <Box padding="space.150">
+          <Stack space="space.150">
+            <Inline space="space.100" alignBlock="center">
+              <Heading as="h4">Location Conflict: {assessment.vendor || 'RelayPost'}</Heading>
+              <Lozenge appearance="removed">Location Restriction Hold</Lozenge>
+            </Inline>
+
+            <Text>
+              Existing vendor <strong>{assessment.vendor || 'RelayPost'}</strong> is changing data processing location from the EU to the US.{' '}
+              <Text weight="bold" as="strong">
+                3 customer DPAs forbid processing outside the EU/UK:
+              </Text>
+            </Text>
+
+            <Box padding="space.100" backgroundColor="color.background.neutral.subtle">
+              <Stack space="space.050">
+                <Text size="small">• Nordic Logistics AS (Norway · EEA exclusive)</Text>
+                <Text size="small">• Bavaria HealthTech GmbH (Germany · EU exclusive)</Text>
+                <Text size="small">• Stockholm Retail Group AB (Sweden · EEA exclusive)</Text>
+              </Stack>
+            </Box>
+
+            <Box
+              padding="space.150"
+              backgroundColor="color.background.accent.teal.subtlest"
+            >
+              <Inline space="space.100" alignBlock="center">
+                <Text weight="semibold">Earliest permitted go-live:</Text>
+                <Badge appearance="added">{assessment.earliestGoLiveDate || '19 January 2027'}</Badge>
+              </Inline>
+            </Box>
+          </Stack>
+        </Box>
+
+        <Text size="small" color="color.text.subtlest">
+          Aviso Previo summarizes your contracts. It is not legal advice.
+        </Text>
+      </Stack>
+    );
+  }
+
+  // State 4: NEW SUBPROCESSOR (e.g. ENG-142 Glimpse session replay)
   return (
     <Stack space="space.200">
       {/* Sample Data Banner */}
       <SectionMessage appearance="discovery">
         <Text weight="bold">Sample data · Fictional</Text>
-        <Text>Aviso Previo is demonstrating DPA compliance for fictional company Ayo Payroll.</Text>
+        <Text>Aviso Previo subprocessor compliance monitor for Ayo Payroll.</Text>
       </SectionMessage>
 
-      {/* Main Advisory Notice */}
+      {/* Main Advisory Box */}
       <Box padding="space.150">
         <Stack space="space.150">
           <Inline space="space.100" alignBlock="center">
-            <Heading as="h4">New Subprocessor Detected: {data.sampleNoticeData.vendor}</Heading>
-            <Lozenge appearance="removed">Release Hold Active</Lozenge>
+            <Heading as="h4">New Subprocessor Detected: {assessment.vendor || 'Glimpse'}</Heading>
+            {assessment.overridden ? (
+              <Lozenge appearance="moved">Overridden by Counsel</Lozenge>
+            ) : (
+              <Lozenge appearance="removed">Release Hold Active</Lozenge>
+            )}
           </Inline>
 
           <Text>
             This ticket introduces a new subprocessor.{' '}
             <Text weight="bold" as="strong">
-              {data.sampleNoticeData.affectedCount} customer DPAs apply:
+              {assessment.affectedCustomers || 41} customer DPAs apply:
             </Text>{' '}
             33 require 30 days notice, 6 require 60 days notice, and{' '}
             <Text weight="bold" as="strong">
-              {data.sampleNoticeData.terminationCount} customers hold objection-and-termination rights
+              {assessment.terminationRightsCount || 2} customers hold objection-and-termination rights
             </Text>
             .{' '}
             <Text weight="bold" as="strong">
-              {data.sampleNoticeData.locationConflictCount} customers forbid processing outside the EU
+              {assessment.locationConflictsCount || 3} customers forbid processing outside the EU
             </Text>
             ; this vendor stores data in the US.
           </Text>
 
-          {/* Notice Date with quiet single accent */}
+          {/* Quiet accent single date box */}
           <Box
             padding="space.150"
             backgroundColor="color.background.accent.teal.subtlest"
           >
-            <Inline space="space.100" alignBlock="center">
-              <Text weight="semibold">Earliest permitted go-live:</Text>
-              <Badge appearance="added">{data.sampleNoticeData.earliestGoLive}</Badge>
+            <Inline space="space.100" spread="space-between" alignBlock="center">
+              <Inline space="space.100" alignBlock="center">
+                <Text weight="semibold">Earliest permitted go-live:</Text>
+                <Badge appearance="added">{assessment.earliestGoLiveDate || '19 January 2027'}</Badge>
+              </Inline>
+              {assessment.legalRequestKey && (
+                <Text size="small">
+                  Privacy Request: <strong>{assessment.legalRequestKey}</strong>
+                </Text>
+              )}
             </Inline>
           </Box>
 
-          {/* Contract Clause Quote in Serif Box */}
+          {/* Clause quote excerpt in serif box */}
           <Box
             padding="space.150"
             backgroundColor="color.background.neutral.subtle"
@@ -173,76 +287,55 @@ const App = () => {
             <Stack space="space.100">
               <Inline space="space.100" alignBlock="center">
                 <Text weight="semibold" size="small">
-                  Sample Clause Excerpt — {data.sampleNoticeData.sampleClauseCustomer}
+                  Sample Clause Excerpt — {assessment.sampleClauseCustomer || 'Nordic Logistics AS'}
                 </Text>
                 <Lozenge appearance="success">Confirmed by Counsel</Lozenge>
               </Inline>
               <Text size="small">
-                <em>&ldquo;{data.sampleNoticeData.sampleClauseQuote}&rdquo;</em>
+                <em>
+                  &ldquo;
+                  {assessment.sampleClauseQuote ||
+                    'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.'}
+                  &rdquo;
+                </em>
               </Text>
             </Stack>
           </Box>
-        </Stack>
-      </Box>
 
-      {/* Phase 1 Spike Diagnostics */}
-      <Box padding="space.150">
-        <Stack space="space.150">
-          <Heading as="h5">Phase 1 Spike Verifications</Heading>
-
-          <Box padding="space.100" backgroundColor="color.background.neutral.subtle">
-            <Stack space="space.100">
-              <Inline space="space.200" spread="space-between">
-                <Text weight="semibold">Issue Panel UI Kit</Text>
-                <Lozenge appearance="success">Rendered</Lozenge>
-              </Inline>
-              <Inline space="space.200" spread="space-between">
-                <Text weight="semibold">Workflow Validator</Text>
-                <Lozenge appearance="inprogress">
-                  Blocks before {data.validatorStatus.sampleUnlockDate}
-                </Lozenge>
-              </Inline>
-              <Inline space="space.200" spread="space-between">
-                <Text weight="semibold">Confluence Read (asApp v2)</Text>
-                <Lozenge
-                  appearance={
-                    data.confluenceStatus.status === 'success' ? 'success' : 'default'
-                  }
-                >
-                  {data.confluenceStatus.sampleTitle || 'Ready'}
-                </Lozenge>
-              </Inline>
-              <Inline space="space.200" spread="space-between">
-                <Text weight="semibold">Forge LLM (Claude)</Text>
-                <Lozenge
-                  appearance={
-                    data.llmStatus.status === 'success' ? 'success' : 'default'
-                  }
-                >
-                  {data.llmStatus.status === 'success' ? 'Tested' : 'Ready'}
-                </Lozenge>
-              </Inline>
-            </Stack>
-          </Box>
-
-          {data.llmStatus.sampleOutput && (
-            <SectionMessage appearance="information" title="Forge LLM Output (Claude via @forge/llm)">
-              <Text>{data.llmStatus.sampleOutput}</Text>
-              {data.llmStatus.inputTokens && (
-                <Text size="small">
-                  Tokens: {data.llmStatus.inputTokens} in / {data.llmStatus.outputTokens} out
-                </Text>
-              )}
+          {/* Human Decision Override Control */}
+          {assessment.overridden ? (
+            <SectionMessage appearance="warning" title="Release Hold Overridden">
+              <Text>
+                Overridden by: {assessment.overriddenBy}. Reason: {assessment.overrideReason}
+              </Text>
             </SectionMessage>
+          ) : showOverrideInput ? (
+            <Box padding="space.100" backgroundColor="color.background.neutral.subtle">
+              <Stack space="space.100">
+                <Text weight="semibold" size="small">Enter override justification:</Text>
+                <Inline space="space.100">
+                  <Button
+                    appearance="danger"
+                    onClick={() => {
+                      setOverrideText('Vendor agreed to EU data residency addendum.');
+                      handleApplyOverride();
+                    }}
+                  >
+                    Apply Legal Exemption Override
+                  </Button>
+                  <Button appearance="subtle" onClick={() => setShowOverrideInput(false)}>
+                    Cancel
+                  </Button>
+                </Inline>
+              </Stack>
+            </Box>
+          ) : (
+            <Inline space="space.100">
+              <Button appearance="subtle" onClick={() => setShowOverrideInput(true)}>
+                Override Decision
+              </Button>
+            </Inline>
           )}
-
-          <Button
-            appearance="default"
-            onClick={runLLMTest}
-            isDisabled={testingLLM}
-          >
-            {testingLLM ? 'Calling Forge LLM...' : 'Run Spike LLM Test'}
-          </Button>
         </Stack>
       </Box>
 
@@ -256,6 +349,6 @@ const App = () => {
 
 ForgeReconciler.render(
   <React.StrictMode>
-    <App />
+    <IssuePanelApp />
   </React.StrictMode>
 );

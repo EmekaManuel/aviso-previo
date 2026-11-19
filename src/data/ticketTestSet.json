@@ -1,0 +1,242 @@
+[
+  {
+    "id": "TICKET-01",
+    "summary": "Add session replay to the payslip screen using Glimpse (fictional vendor) to debug layout bugs",
+    "description": "To help triage CSS rendering issues reported by mobile employees viewing payslips, we will integrate Glimpse session replay SDK onto the payslip and tax calculation screens. Glimpse records DOM events and user session state for playback and hosts data on their US multi-tenant cluster.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "Glimpse",
+    "reasoning": "Glimpse is not on the published subprocessor list and will process employee payslip DOM sessions."
+  },
+  {
+    "id": "TICKET-02",
+    "summary": "Upgrade ErrorSentry SDK to v8",
+    "description": "Update the client-side error telemetry library @errorsentry/browser from v7.11 to v8.2.0. This brings OpenTelemetry tracing support. No changes to data collection scope or hosting region (remains Frankfurt EU cluster).",
+    "expectedClassification": "EXISTING_VENDOR_NO_CHANGE",
+    "expectedVendor": "ErrorSentry",
+    "reasoning": "ErrorSentry is on the approved list and hosting remains Frankfurt EU."
+  },
+  {
+    "id": "TICKET-03",
+    "summary": "Move RelayPost sending region from EU to US",
+    "description": "To take advantage of RelayPost dedicated IP warm-up pools in the US-East data center, reconfigure our mail delivery pipeline to route payslip notifications through RelayPost US infrastructure instead of the Dublin EU endpoint.",
+    "expectedClassification": "LOCATION_CHANGE",
+    "expectedVendor": "RelayPost",
+    "reasoning": "RelayPost is an existing subprocessor, but relocating email delivery from EU to US is a location change."
+  },
+  {
+    "id": "TICKET-04",
+    "summary": "Evaluate Glimpse in sandbox with synthetic data only",
+    "description": "Spin up a temporary staging container to test Glimpse session replay performance. Testing will be performed exclusively using mock test fixtures and synthetic employee numbers; no production or customer personal data will be loaded.",
+    "expectedClassification": "NO_CUSTOMER_DATA",
+    "expectedVendor": "Glimpse",
+    "reasoning": "Glimpse is mentioned, but description explicitly restricts usage to synthetic data without customer data."
+  },
+  {
+    "id": "TICKET-05",
+    "summary": "Integrate MixTrack for marketing landing page analytics",
+    "description": "Add MixTrack client script to marketing website (ayopayroll.com) for visitor click attribution. Does not run inside the authenticated payroll application.",
+    "expectedClassification": "NO_CUSTOMER_DATA",
+    "expectedVendor": "MixTrack",
+    "reasoning": "Marketing landing page analytics does not process customer payroll data."
+  },
+  {
+    "id": "TICKET-06",
+    "summary": "Add CloudHarbor database read replica in London",
+    "description": "Deploy an auxiliary PostgreSQL read replica inside CloudHarbor London region to serve UK read queries.",
+    "expectedClassification": "EXISTING_VENDOR_NO_CHANGE",
+    "expectedVendor": "CloudHarbor",
+    "reasoning": "CloudHarbor is an existing hosting provider and London remains within approved UK/EU data limits."
+  },
+  {
+    "id": "TICKET-07",
+    "summary": "Send employee tax forms to TaxVantage API for automated validation",
+    "description": "Implement automated tax schedule checking by streaming employee National Insurance and PAYE records to TaxVantage cloud API in Virginia, US.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "TaxVantage",
+    "reasoning": "TaxVantage is a new third-party vendor receiving employee tax records."
+  },
+  {
+    "id": "TICKET-08",
+    "summary": "Fix pension calculation rounding bug for Scottish tier rates",
+    "description": "Adjust arithmetic rounding logic in payroll calculation engine to round half-up to 2 decimals.",
+    "expectedClassification": "UNRELATED",
+    "expectedVendor": null,
+    "reasoning": "Internal logic bug fix, no third-party data flow."
+  },
+  {
+    "id": "TICKET-09",
+    "summary": "Add DocSigner webhook handler for completed employment contracts",
+    "description": "Listen for doc.completed webhooks from existing partner DocSigner to update employee onboarding record status.",
+    "expectedClassification": "EXISTING_VENDOR_NO_CHANGE",
+    "expectedVendor": "DocSigner",
+    "reasoning": "DocSigner is already an approved subprocessor for document signatures."
+  },
+  {
+    "id": "TICKET-10",
+    "summary": "Migrate application log indexing to DataFlock US East region",
+    "description": "Replace local server log rotation with DataFlock SaaS agent streaming all application and user request logs to DataFlock Virginia servers.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "DataFlock",
+    "reasoning": "DataFlock is a new third party receiving application logs containing request headers and IP addresses."
+  },
+  {
+    "id": "TICKET-11",
+    "summary": "Implement Redis caching layer for employee directory queries",
+    "description": "Store frequently accessed company department hierarchies in Redis cache on CloudHarbor.",
+    "expectedClassification": "UNRELATED",
+    "expectedVendor": null,
+    "reasoning": "Internal caching infrastructure on existing CloudHarbor hosting."
+  },
+  {
+    "id": "TICKET-12",
+    "summary": "Integrate Crispdesk chat widget inside payslip portal",
+    "description": "Embed Crispdesk live chat widget on employee portal so employees can contact HR. Crispdesk stores chat histories and user identity tokens on US servers.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "Crispdesk",
+    "reasoning": "Crispdesk is a new subprocessor handling employee identity and communications."
+  },
+  {
+    "id": "TICKET-13",
+    "summary": "Update HelpDeskConnect API token in production secrets",
+    "description": "Rotate expired API secret for existing support ticketing system HelpDeskConnect.",
+    "expectedClassification": "EXISTING_VENDOR_NO_CHANGE",
+    "expectedVendor": "HelpDeskConnect",
+    "reasoning": "Credential rotation for existing approved vendor."
+  },
+  {
+    "id": "TICKET-14",
+    "summary": "Test TaxVantage API integration in local mock environment",
+    "description": "Evaluate TaxVantage response schema using static JSON mock responses on local developer machines.",
+    "expectedClassification": "NO_CUSTOMER_DATA",
+    "expectedVendor": "TaxVantage",
+    "reasoning": "Local mock testing using static sample fixtures, no real customer data transmitted."
+  },
+  {
+    "id": "TICKET-15",
+    "summary": "Move PayRoute settlement gateway endpoint from London to US West",
+    "description": "Route bank transaction payload settlement through PayRoute Oregon data center for redundancy.",
+    "expectedClassification": "LOCATION_CHANGE",
+    "expectedVendor": "PayRoute",
+    "reasoning": "PayRoute is an approved vendor, but routing data to US West is a location change."
+  },
+  {
+    "id": "TICKET-16",
+    "summary": "Fix CSS alignment on Payslip PDF download button",
+    "description": "Align download icon with text baseline on mobile Safari.",
+    "expectedClassification": "UNRELATED",
+    "expectedVendor": null,
+    "reasoning": "Front-end UI alignment bug."
+  },
+  {
+    "id": "TICKET-17",
+    "summary": "Add SMS notification via TextRapid for payslip availability",
+    "description": "Send SMS alerts with employee phone numbers and net pay summary via TextRapid messaging API.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "TextRapid",
+    "reasoning": "TextRapid is a new third-party subprocessor receiving employee phone numbers and net pay amounts."
+  },
+  {
+    "id": "TICKET-18",
+    "summary": "Update CacheStream CDN cache invalidation headers",
+    "description": "Set Cache-Control: max-age=3600 on static asset responses across existing CacheStream CDN.",
+    "expectedClassification": "EXISTING_VENDOR_NO_CHANGE",
+    "expectedVendor": "CacheStream",
+    "reasoning": "CacheStream is on the approved list; config change on static assets."
+  },
+  {
+    "id": "TICKET-19",
+    "summary": "Benchmark TextRapid throughput using dummy phone numbers in dev",
+    "description": "Send 1,000 load test SMS to 555-0199 dummy numbers in staging to test TextRapid rate limits.",
+    "expectedClassification": "NO_CUSTOMER_DATA",
+    "expectedVendor": "TextRapid",
+    "reasoning": "Load testing with dummy 555 numbers, no customer personal data."
+  },
+  {
+    "id": "TICKET-20",
+    "summary": "Refactor Nigerian Bank Sort Code lookup table",
+    "description": "Update local array of Nigerian Central Bank clearing routing codes.",
+    "expectedClassification": "UNRELATED",
+    "expectedVendor": null,
+    "reasoning": "Static code table refactor."
+  },
+  {
+    "id": "TICKET-21",
+    "summary": "Integrate ClearID for automated passport and ID verification during onboarding",
+    "description": "New employees will upload passport and driver license scans to ClearID for biometric KYC checks. ClearID processes and stores identity documents in the US.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "ClearID",
+    "reasoning": "ClearID is a new subprocessor processing sensitive employee identification documents."
+  },
+  {
+    "id": "TICKET-22",
+    "summary": "Upgrade VaultMetrics monitoring agent on database nodes",
+    "description": "Upgrade VaultMetrics daemon from v3.4 to v3.6 on internal application servers. Host cluster remains Frankfurt EU.",
+    "expectedClassification": "EXISTING_VENDOR_NO_CHANGE",
+    "expectedVendor": "VaultMetrics",
+    "reasoning": "Daemon upgrade for existing approved vendor."
+  },
+  {
+    "id": "TICKET-23",
+    "summary": "Move VaultMetrics log storage retention to US Cold Storage bucket",
+    "description": "Archive audit log backups older than 90 days to VaultMetrics US-West S3 archive.",
+    "expectedClassification": "LOCATION_CHANGE",
+    "expectedVendor": "VaultMetrics",
+    "reasoning": "VaultMetrics is an approved vendor, but transferring archives to US is a location change."
+  },
+  {
+    "id": "TICKET-24",
+    "summary": "Add dark mode toggle to employee profile page",
+    "description": "Store user theme preference in browser localStorage.",
+    "expectedClassification": "UNRELATED",
+    "expectedVendor": null,
+    "reasoning": "Front-end local storage setting."
+  },
+  {
+    "id": "TICKET-25",
+    "summary": "Connect Pinecone vector database for employee handbook natural language search",
+    "description": "Index employee handbook policy documents in Pinecone cloud vector DB to enable semantic search in help center.",
+    "expectedClassification": "NO_CUSTOMER_DATA",
+    "expectedVendor": "Pinecone",
+    "reasoning": "Employee handbook policies are public company policies, not customer personal data."
+  },
+  {
+    "id": "TICKET-26",
+    "summary": "Add VoiceBot AI for telephone payroll queries with employee voice verification",
+    "description": "Implement VoiceBot automated phone answering service that verifies callers using voiceprints and reads out net salary amounts.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "VoiceBot",
+    "reasoning": "VoiceBot is a new subprocessor processing employee voiceprints and salary data."
+  },
+  {
+    "id": "TICKET-27",
+    "summary": "Update IdentityPass MFA SMS gateway retry timeouts",
+    "description": "Increase timeout from 30s to 45s when waiting for IdentityPass token confirmation.",
+    "expectedClassification": "EXISTING_VENDOR_NO_CHANGE",
+    "expectedVendor": "IdentityPass",
+    "reasoning": "Timeout configuration tweak for existing approved vendor."
+  },
+  {
+    "id": "TICKET-28",
+    "summary": "Conduct internal load test of payslip PDF generation engine",
+    "description": "Generate 10,000 sample PDF payslips in local Docker cluster to measure CPU utilization.",
+    "expectedClassification": "UNRELATED",
+    "expectedVendor": null,
+    "reasoning": "Local load test with internal workers."
+  },
+  {
+    "id": "TICKET-29",
+    "summary": "Engage AuditShield for annual SOC 2 penetration test in staging",
+    "description": "Provide AuditShield security auditors with temporary read-only access to staging environment populated with synthetic mock tenants.",
+    "expectedClassification": "NO_CUSTOMER_DATA",
+    "expectedVendor": "AuditShield",
+    "reasoning": "Penetration test on staging with synthetic mock tenants only."
+  },
+  {
+    "id": "TICKET-30",
+    "summary": "Stream employee bank account details to FraudLens for AML screening",
+    "description": "To comply with anti-money laundering regulations, stream all new employee bank account additions and salary changes to FraudLens real-time screening API in US.",
+    "expectedClassification": "NEW_SUBPROCESSOR",
+    "expectedVendor": "FraudLens",
+    "reasoning": "FraudLens is a new subprocessor processing customer bank details and salary changes."
+  }
+]

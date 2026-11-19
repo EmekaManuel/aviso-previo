@@ -6,8 +6,9 @@
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "forge lint",
-    "test": "node scripts/score-extraction.js",
-    "test:extraction": "node scripts/score-extraction.js"
+    "test": "node scripts/score-extraction.js && node scripts/score-tickets.js",
+    "test:extraction": "node scripts/score-extraction.js",
+    "test:tickets": "node scripts/score-tickets.js"
   },
   "dependencies": {
     "@forge/api": "^8.5.0",

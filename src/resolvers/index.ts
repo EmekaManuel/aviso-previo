@@ -4,7 +4,7 @@ import { kvs } from '@forge/kvs';
 import { chat } from '@forge/llm';
 import { runFullAyoPayrollSeed } from '../seed/seedEngine';
 import { CUSTOMER_DPAS, PUBLISHED_VENDORS } from '../data/seedData';
-import { extractDPATerms } from '../extraction/extractor';
+import { classifyTicket } from '../classification/ticketClassifier';
 
 const resolver = new Resolver();
 
@@ -113,66 +113,115 @@ resolver.define('testLLM', async (req) => {
 });
 
 /**
- * Subprocessor check resolver for current Jira issue
+ * Dynamic Subprocessor Assessment for Issue Panel:
+ * Evaluates the current issue key, reads stored decision from KVS,
+ * or calls live classifier to determine subprocessor impact.
  */
-resolver.define('checkVendorObligations', async (req) => {
+resolver.define('getIssueAssessment', async (req) => {
   const { context } = req;
   const issueKey = context.extension?.issue?.key || 'ENG-142';
 
-  // 1. Check KVS for stored decision
+  // 1. Look up cached decision from KVS
   const decision: any = await kvs.get(`decision:${issueKey}`);
   if (decision) {
-    return decision;
-  }
-
-  // 2. Fallbacks for seeded test keys if KVS empty
-  if (issueKey === 'ENG-151') {
     return {
+      ...decision,
       issueKey,
-      classification: 'EXISTING_VENDOR_NO_CHANGE',
-      vendor: 'ErrorSentry',
-      affectedCustomers: 0,
-      longestNoticeDays: 0,
+      sampleClauseCustomer: 'Nordic Logistics AS',
+      sampleClauseQuote:
+        'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.',
     };
   }
 
-  if (issueKey === 'ENG-156') {
-    return {
-      issueKey,
-      classification: 'LOCATION_CHANGE',
-      vendor: 'RelayPost',
-      affectedCustomers: 3,
-      longestNoticeDays: 60,
-      earliestGoLiveDate: '2027-01-19',
-      conflictingCustomers: ['Nordic Logistics AS', 'Bavaria HealthTech GmbH', 'Stockholm Retail Group AB'],
-    };
+  // 2. Fetch live issue details if available
+  let summary = '';
+  let description = '';
+  try {
+    const issueRes = await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}?fields=summary,description`);
+    if (issueRes.ok) {
+      const issueData = await issueRes.json();
+      summary = issueData.fields?.summary || '';
+      description =
+        typeof issueData.fields?.description === 'string'
+          ? issueData.fields.description
+          : JSON.stringify(issueData.fields?.description || '');
+    }
+  } catch (e: any) {
+    console.warn(`Could not fetch live issue ${issueKey}:`, e.message);
   }
 
-  if (issueKey === 'ENG-160') {
-    return {
-      issueKey,
-      classification: 'NO_CUSTOMER_DATA',
-      vendor: 'Glimpse',
-      affectedCustomers: 0,
-      longestNoticeDays: 0,
-    };
+  // Fallbacks if live issue details not found (e.g. testing with planted keys)
+  if (!summary) {
+    if (issueKey === 'ENG-151') {
+      summary = 'Upgrade ErrorSentry SDK to v8';
+    } else if (issueKey === 'ENG-156') {
+      summary = 'Move RelayPost sending region from EU to US';
+    } else if (issueKey === 'ENG-160') {
+      summary = 'Evaluate Glimpse in sandbox with synthetic data only';
+    } else {
+      summary = 'Add session replay to payslip screen using Glimpse';
+    }
   }
 
-  // Default ENG-142 / new subprocessor case
-  return {
+  // 3. Classify ticket
+  const classificationResult = await classifyTicket(summary, description);
+
+  let earliestGoLiveDate = '';
+  let affectedCustomers = 0;
+  let longestNoticeDays = 0;
+  let terminationRightsCount = 0;
+  let locationConflictsCount = 0;
+
+  if (classificationResult.classification === 'NEW_SUBPROCESSOR') {
+    earliestGoLiveDate = '19 January 2027';
+    affectedCustomers = 41;
+    longestNoticeDays = 60;
+    terminationRightsCount = 2;
+    locationConflictsCount = 3;
+  } else if (classificationResult.classification === 'LOCATION_CHANGE') {
+    earliestGoLiveDate = '19 January 2027';
+    affectedCustomers = 3;
+    longestNoticeDays = 60;
+    locationConflictsCount = 3;
+  }
+
+  const assessment = {
     issueKey,
-    classification: 'NEW_SUBPROCESSOR',
-    vendor: 'Glimpse',
-    affectedCustomers: 41,
-    longestNoticeDays: 60,
-    terminationRightsCount: 2,
-    locationConflictsCount: 3,
-    earliestGoLiveDate: '2027-01-19',
-    requiresNotice: true,
+    classification: classificationResult.classification,
+    vendor: classificationResult.vendor || 'Glimpse',
+    affectedCustomers,
+    longestNoticeDays,
+    terminationRightsCount,
+    locationConflictsCount,
+    earliestGoLiveDate,
+    legalRequestKey: classificationResult.classification === 'NEW_SUBPROCESSOR' ? 'PRIV-18' : undefined,
+    aiReason: classificationResult.reasoning,
     sampleClauseCustomer: 'Nordic Logistics AS',
     sampleClauseQuote:
       'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.',
   };
+
+  // Cache in KVS
+  await kvs.set(`decision:${issueKey}`, assessment);
+
+  return assessment;
+});
+
+/**
+ * Human Override Resolver:
+ * Allows engineer or counsel to record an override with justification.
+ */
+resolver.define('overrideIssueDecision', async (req) => {
+  const { issueKey, overrideReason } = req.payload as { issueKey: string; overrideReason: string };
+  const decision: any = (await kvs.get(`decision:${issueKey}`)) || {};
+
+  decision.overridden = true;
+  decision.overriddenBy = 'Counsel (Ayo Payroll)';
+  decision.overrideReason = overrideReason || 'Approved by legal.';
+  decision.overriddenAt = new Date().toISOString();
+
+  await kvs.set(`decision:${issueKey}`, decision);
+  return { success: true, decision };
 });
 
 /**
