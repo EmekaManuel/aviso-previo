@@ -16,16 +16,16 @@ modules:
     - key: aviso-previo-llm
       model:
         - claude
+  function:
+    - key: resolver
+      handler: index.handler
+    - key: release-validator-func
+      handler: index.validateTransition
 resources:
   - key: main
     path: src/frontend/index.tsx
-functions:
-  - key: resolver
-    handler: src/resolvers/index.handler
-  - key: release-validator-func
-    handler: src/validator/index.validateTransition
 app:
-  id: ari:cloud:ecosystem::app/c87d1785-dac4-4a36-86e1-60211a5f44e6
+  id: ari:cloud:ecosystem::app/2bd1fd88-a709-4b4c-bf65-fcdac4a24bf8
   runtime:
     name: nodejs22.x
 permissions:
