@@ -4,6 +4,10 @@
 **Category**: Apps for Business Teams (Legal / Privacy / Compliance)  
 **Bonus Prizes**: Best Agents (`rovo:agent` with three reusable `action` modules), Best app with Atlassian MCP (`rovo:mcp`), and Best apps with Teamwork Graph integration (`graph:connector`).  
 
+**Installation link (Jira and Confluence)**: https://developer.atlassian.com/console/install/2bd1fd88-a709-4b4c-bf65-fcdac4a24bf8?signature=AYABeLUHU4ahZoGHIOJ0r0vjh50AAAADAAdhd3Mta21zAEthcm46YXdzOmttczp1cy13ZXN0LTI6NzA5NTg3ODM1MjQzOmtleS83MDVlZDY3MC1mNTdjLTQxYjUtOWY5Yi1lM2YyZGNjMTQ2ZTcAuAECAQB4CxqLTo9l4lqXuFjNim1xJM%2Bp%2F3TVP9xHS2BrU5DRRucBjEbcYr6NAMgXvnMTKf%2BjxAAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDG6mCC1KXa2Cjzn4jwIBEIA7wqYN%2FtV7KPnoNrRdx06LX5zzlqPUXoJfNXyhY72HMk6Pv2eaMoMbJXn34gngnF6%2B%2FOidetYd3XTsIKoAB2F3cy1rbXMAS2Fybjphd3M6a21zOmV1LXdlc3QtMTo3MDk1ODc4MzUyNDM6a2V5LzQ2MzBjZTZiLTAwYzMtNGRlMi04NzdiLTYyN2UyMDYwZTVjYwC4AQICAHi9bVMAkme4qVQX1fQHo6ePw3H40A7cGfz7yrmSfBWMXgGJJ2SbwZVcuscjb58ucVVxAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiqQfn2V3HIzGV58oAgEQgDt9PjE%2FTZVF78j1YdrT%2BEJV26zcpfqejZwCyZngk5vUmOVYXRCp1TlIUvPtKAfm9YHFLxi%2FZ6E%2FBBMfTAAHYXdzLWttcwBLYXJuOmF3czprbXM6dXMtZWFzdC0xOjcwOTU4NzgzNTI0MzprZXkvNmMxMjBiYTAtNGNkNS00OTg1LWI4MmUtNDBhMDQ5NTJjYzU3ALgBAgIAeDYASx0XCjkny4iLV6vz%2BKtEGSGT6kdt0QRpkn6D%2FlVEAYgk8cTtdUagw1Ky3V4vtNEAAAB%2BMHwGCSqGSIb3DQEHBqBvMG0CAQAwaAYJKoZIhvcNAQcBMB4GCWCGSAFlAwQBLjARBAyJv1%2FH72R2PeeZgRkCARCAO53Ri2b0kpeU2KgE0Wxg7CtJnlEsfuPuHLAUec0tBnxsIL9VKc6tcproKa6NlC3FAZktoPWKaWU07RUIAgAAAAAMAAAQAAAAAAAAAAAAAAAAAAwyfomJjVkLUPbxoD%2B%2BDUb%2F%2F%2F%2F%2FAAAAAQAAAAAAAAAAAAAAAQAAADLBjgKUUpK0nOlzuLI49e432DE7NxlCo7w6Gleyo6wxyeI5SAK9YSShv1eKXMk1g%2Be8HgqjeeiMC6h4QrdEqwxW278%3D&product=confluence&product=jira  
+**Privacy policy**: https://gist.github.com/EmekaManuel/7917b0ac71079f0682c3e4e203f6adf3  
+**Testing**: install on a site where you are an admin, open **Aviso Previo Admin** and click **Load sample data**, then follow the walkthrough in the README. All data is fictional.  
+
 ---
 
 ## Pitch

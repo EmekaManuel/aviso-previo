@@ -8,7 +8,7 @@ What Codegeist asks for, and what is done.
 | Bonus prizes | Best Agents (`rovo:agent`), Best MCP (`rovo:mcp`), Best Teamwork Graph (`graph:connector`) |
 | Explanation of the technology | [README](../README.md) and [DEVPOST.md](DEVPOST.md) |
 | Demo video, under 5 minutes, public on YouTube | **To do.** See [VIDEO_SCRIPT.md](VIDEO_SCRIPT.md). Run the Evaluation tab first and use its real numbers. |
-| Installation link for judges | **To do**, see below |
+| Installation link for judges | **Done.** Sharing is on for Jira and Confluence; the link is in the README and `DEVPOST.md`. If you regenerate it in the console, the old link stops working. |
 | Marketplace bonus | Not entered. See below. |
 
 ## Installation link
