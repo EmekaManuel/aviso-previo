@@ -5,12 +5,29 @@ import ForgeReconciler, {
   SectionMessage,
   Box,
   Stack,
-  Badge,
   Lozenge,
   Button,
   Inline,
+  Tabs,
+  Tab,
+  TabList,
+  TabPanel,
+  Tag,
+  Textfield,
+  Select,
+  DynamicTable,
+  EmptyState,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+  ModalTransition,
+  ProgressBar,
+  Spinner,
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
+import { Footnote, Kpi, Field, FieldRow, card, tint, quote } from './ui';
 
 interface DPAItem {
   id: string;
@@ -57,6 +74,29 @@ interface AdminState {
   benchmarkScore: BenchmarkScore | null;
 }
 
+type StatusFilter = 'all' | 'confirmed' | 'unconfirmed' | 'unclear';
+
+const isUnclear = (d: DPAItem) => d.status === 'unclear' || d.noticeUnit === 'unclear';
+
+const statusLozenge = (d: DPAItem) =>
+  d.status === 'confirmed' ? (
+    <Lozenge appearance="success">Confirmed</Lozenge>
+  ) : isUnclear(d) ? (
+    <Lozenge appearance="removed">Needs review</Lozenge>
+  ) : (
+    <Lozenge appearance="inprogress">Awaiting review</Lozenge>
+  );
+
+const noticeText = (d: DPAItem) =>
+  d.noticePeriodDays ? `${d.noticePeriodDays} ${d.noticeUnit === 'business' ? 'business' : 'calendar'} days` : 'Not stated';
+
+const FILTER_OPTIONS: { label: string; value: StatusFilter }[] = [
+  { label: 'All statuses', value: 'all' },
+  { label: 'Confirmed', value: 'confirmed' },
+  { label: 'Awaiting review', value: 'unconfirmed' },
+  { label: 'Needs review', value: 'unclear' },
+];
+
 const AdminApp = () => {
   const [state, setState] = useState<AdminState>({
     loading: true,
@@ -70,6 +110,10 @@ const AdminApp = () => {
     seedLogs: [],
     benchmarkScore: null,
   });
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [selected, setSelected] = useState<DPAItem | null>(null);
+  const [benchmarking, setBenchmarking] = useState(false);
 
   const loadData = () => {
     invoke<any>('getAdminState')
@@ -100,11 +144,7 @@ const AdminApp = () => {
     try {
       const res: any = await invoke('seedAyoPayroll');
       const messages = res.logs?.map((l: any) => `${l.stage}: ${l.message}`) || [];
-      setState((prev) => ({
-        ...prev,
-        seeding: false,
-        seedLogs: messages,
-      }));
+      setState((prev) => ({ ...prev, seeding: false, seedLogs: messages }));
       loadData();
     } catch (e: any) {
       setState((prev) => ({
@@ -116,17 +156,21 @@ const AdminApp = () => {
   };
 
   const handleRunBenchmark = async () => {
+    setBenchmarking(true);
     try {
       const score = (await invoke<any>('getExtractionBenchmarkScore')) as BenchmarkScore;
       setState((prev) => ({ ...prev, benchmarkScore: score }));
     } catch (e) {
       console.error('Error running benchmark:', e);
+    } finally {
+      setBenchmarking(false);
     }
   };
 
   const handleConfirm = async (dpaId: string) => {
     try {
       await invoke('confirmDPA', { dpaId });
+      setSelected(null);
       loadData();
     } catch (e: any) {
       console.error('Confirm error:', e);
@@ -142,79 +186,130 @@ const AdminApp = () => {
     }
   };
 
+  const reviewable = state.dpaCount - state.unclearCount;
+  const pending = Math.max(reviewable - state.confirmedCount, 0);
+  const progress = reviewable > 0 ? state.confirmedCount / reviewable : 0;
+
+  const visibleDpas = state.dpas.filter((d) => {
+    const q = query.trim().toLowerCase();
+    if (q && !`${d.customerName} ${d.country}`.toLowerCase().includes(q)) return false;
+    if (filter === 'confirmed') return d.status === 'confirmed';
+    if (filter === 'unclear') return isUnclear(d);
+    if (filter === 'unconfirmed') return d.status !== 'confirmed' && !isUnclear(d);
+    return true;
+  });
+
+  const dpaTable = {
+    head: {
+      cells: [
+        { key: 'customer', content: 'Customer', isSortable: true },
+        { key: 'notice', content: 'Notice period', isSortable: true },
+        { key: 'objection', content: 'Objection window' },
+        { key: 'terms', content: 'Rights & limits' },
+        { key: 'status', content: 'Status' },
+        { key: 'actions', content: '' },
+      ],
+    },
+    rows: visibleDpas.map((d) => ({
+      key: d.id,
+      cells: [
+        {
+          key: d.customerName,
+          content: (
+            <Stack space="space.0">
+              <Text weight="semibold">{d.customerName}</Text>
+              <Text size="small" color="color.text.subtlest">{d.country}</Text>
+            </Stack>
+          ),
+        },
+        { key: d.noticePeriodDays ?? 0, content: <Text>{noticeText(d)}</Text> },
+        {
+          content: (
+            <Text>{d.objectionWindowDays ? `${d.objectionWindowDays} days` : '—'}</Text>
+          ),
+        },
+        {
+          content: (
+            <Inline space="space.050" shouldWrap>
+              {d.remedy === 'terminate' && <Lozenge appearance="removed">Can terminate</Lozenge>}
+              {d.locationRestriction === 'EU_UK_ONLY' && <Lozenge appearance="moved">EU/UK only</Lozenge>}
+              {d.remedy !== 'terminate' && d.locationRestriction !== 'EU_UK_ONLY' && (
+                <Text color="color.text.subtlest">None</Text>
+              )}
+            </Inline>
+          ),
+        },
+        { content: statusLozenge(d) },
+        {
+          content: (
+            <Button appearance="subtle" onClick={() => setSelected(d)}>
+              Review
+            </Button>
+          ),
+        },
+      ],
+    })),
+  };
+
+  const vendorTable = {
+    head: {
+      cells: [
+        { key: 'name', content: 'Vendor', isSortable: true },
+        { key: 'category', content: 'Category', isSortable: true },
+        { key: 'hosting', content: 'Hosting location' },
+        { key: 'published', content: 'Listed on' },
+      ],
+    },
+    rows: state.vendors.map((v) => ({
+      key: v.key,
+      cells: [
+        { key: v.name, content: <Text weight="semibold">{v.name}</Text> },
+        { key: v.category, content: <Tag text={v.category} /> },
+        { content: <Text>{v.hostingLocation}</Text> },
+        { content: <Text>{v.publishedDate}</Text> },
+      ],
+    })),
+  };
+
+  const bench = state.benchmarkScore;
+  const benchRows: [string, string][] = bench
+    ? [
+        ['Notice period accuracy', bench.noticePeriodAccuracy],
+        ['Calendar vs. business day unit', bench.unitAccuracy],
+        ['Termination right recall', bench.terminationRecall],
+        ['Location limit recall', bench.locationLimitRecall],
+        ['Unsupported claims', bench.zeroHallucinationRate],
+        ['Ambiguous clauses flagged', bench.unclearHandling],
+      ]
+    : [];
+
   return (
-    <Stack space="space.200">
-      {/* Sample Data Banner */}
-      <SectionMessage appearance="discovery">
-        <Text weight="bold">Sample data · Fictional</Text>
-        <Text>Aviso Previo contract register for fictional company Ayo Payroll.</Text>
-      </SectionMessage>
-
-      {/* Header and Seed Controls */}
-      <Box padding="space.150">
-        <Stack space="space.150">
-          <Inline space="space.100" spread="space-between" alignBlock="center">
-            <Heading as="h3">DPA Register & Subprocessor Governance</Heading>
-            <Inline space="space.100">
-              <Button
-                appearance="default"
-                onClick={handleRunBenchmark}
-              >
-                Run Extraction Accuracy Benchmark
-              </Button>
-              <Button
-                appearance="primary"
-                onClick={handleSeed}
-                isDisabled={state.seeding}
-              >
-                {state.seeding ? 'Loading Ayo Payroll sample...' : 'Load Ayo Payroll sample'}
-              </Button>
-            </Inline>
-          </Inline>
-          <Text>
-            Counsel reviews each DPA terms beside the exact clause extracted from Confluence. Terms only count toward release holds once confirmed by counsel.
-          </Text>
-        </Stack>
-      </Box>
-
-      {/* Extraction Benchmark Card */}
-      {state.benchmarkScore && (
-        <SectionMessage appearance="success" title="Phase 3: DPA Extraction Benchmark Scorecard (All 41 Contracts)">
-          <Stack space="space.100">
-            <Inline space="space.200" spread="space-between">
-              <Text>Notice Period Accuracy: {state.benchmarkScore.noticePeriodAccuracy}</Text>
-              <Text>Unit Accuracy (Calendar/Biz): {state.benchmarkScore.unitAccuracy}</Text>
-              <Text>Termination Recall: {state.benchmarkScore.terminationRecall}</Text>
-            </Inline>
-            <Inline space="space.200" spread="space-between">
-              <Text>Location Limits: {state.benchmarkScore.locationLimitRecall}</Text>
-              <Text>Zero Hallucination Rate: {state.benchmarkScore.zeroHallucinationRate}</Text>
-              <Text>Unclear Rule: {state.benchmarkScore.unclearHandling}</Text>
-            </Inline>
-            <Text size="small" color="color.text.subtlest">
-              Verified against answer key: 0 wrong-but-confident errors. Ready for Devpost submission.
-            </Text>
-          </Stack>
-        </SectionMessage>
-      )}
-
-      {/* Judge "Try this" Guidance Box */}
-      <SectionMessage appearance="information" title="Try this (Codegeist 2026 Walkthrough)">
-        <Text>
-          1. Review the 41 customer DPAs below. Notice 2 customers hold termination remedies (Nordic Logistics &amp; Caledonia Finance), and 3 restrict data to the EU/UK.
+    <Stack space="space.300">
+      {/* Header */}
+      <Stack space="space.100">
+        <Inline space="space.150" alignBlock="center" shouldWrap>
+          <Heading as="h2">Subprocessor register</Heading>
+          <Lozenge appearance="default">Sample data</Lozenge>
+        </Inline>
+        <Text color="color.text.subtlest">
+          Customer DPA terms extracted from Confluence for Ayo Payroll. A term only triggers a release hold after counsel confirms it.
         </Text>
-        <Text>
-          2. Create a ticket in project ENG with: &ldquo;Add session replay to payslip screen using Glimpse&rdquo; (adds new vendor). Notice the 60-day hold panel.
-        </Text>
-        <Text>
-          3. Now create a ticket: &ldquo;Upgrade ErrorSentry SDK to v8&rdquo; (existing vendor). Notice: no panel is triggered.
-        </Text>
-      </SectionMessage>
+        <Inline space="space.100" shouldWrap>
+          <Button appearance="primary" onClick={handleSeed} isDisabled={state.seeding}>
+            {state.seeding ? 'Loading sample…' : 'Load sample data'}
+          </Button>
+          {pending > 0 && (
+            <Button onClick={handleConfirmAll}>Confirm {pending} pending</Button>
+          )}
+        </Inline>
+      </Stack>
 
-      {/* Seed Log Output */}
       {state.seedLogs.length > 0 && (
-        <SectionMessage appearance="success" title="Sample Data Load Status">
-          <Stack space="space.050">
+        <SectionMessage
+          appearance={state.seedLogs.some((l) => l.startsWith('Error')) ? 'error' : 'success'}
+          title="Sample data"
+        >
+          <Stack space="space.025">
             {state.seedLogs.map((log, idx) => (
               <Text key={idx} size="small">{log}</Text>
             ))}
@@ -222,122 +317,211 @@ const AdminApp = () => {
         </SectionMessage>
       )}
 
-      {/* Metrics Row */}
-      <Box padding="space.100" backgroundColor="color.background.neutral.subtle">
-        <Inline space="space.200" spread="space-between" alignBlock="center">
-          <Inline space="space.100">
-            <Text weight="semibold">Total Customer DPAs:</Text>
-            <Badge appearance="primary">{state.dpaCount}</Badge>
-          </Inline>
-          <Inline space="space.100">
-            <Text weight="semibold">Confirmed by Counsel:</Text>
-            <Badge appearance="added">{state.confirmedCount}</Badge>
-          </Inline>
-          <Inline space="space.100">
-            <Text weight="semibold">Unclear (Human review required):</Text>
-            <Badge appearance="important">{state.unclearCount}</Badge>
-          </Inline>
-          <Inline space="space.100">
-            <Text weight="semibold">Approved Vendors:</Text>
-            <Badge>{state.vendorCount}</Badge>
-          </Inline>
-          {state.confirmedCount < state.dpaCount - state.unclearCount && (
-            <Button appearance="subtle" onClick={handleConfirmAll}>
-              Confirm All Valid Terms
-            </Button>
-          )}
-        </Inline>
-      </Box>
+      {/* KPIs */}
+      <Inline space="space.150" rowSpace="space.150" shouldWrap>
+        <Kpi label="Customer DPAs" value={state.dpaCount} />
+        <Kpi label="Confirmed" value={state.confirmedCount} hint={`${pending} awaiting review`} />
+        <Kpi label="Needs human review" value={state.unclearCount} hint="Ambiguous clause" />
+        <Kpi label="Approved vendors" value={state.vendorCount} />
+      </Inline>
 
-      {/* Empty State */}
-      {state.dpaCount === 0 && !state.loading && (
-        <Box padding="space.200">
-          <Stack space="space.100" alignInline="center">
-            <Heading as="h4">No contracts found yet</Heading>
-            <Text>
-              Click &quot;Load Ayo Payroll sample&quot; above to populate the 41 fictional customer contracts, 9 approved vendors, and planted Jira test tickets.
+      {reviewable > 0 && (
+        <Stack space="space.075">
+          <Inline spread="space-between" alignBlock="center">
+            <Text size="small" color="color.text.subtlest">Counsel review progress</Text>
+            <Text size="small" weight="semibold">
+              {state.confirmedCount} of {reviewable}
             </Text>
-          </Stack>
-        </Box>
+          </Inline>
+          <ProgressBar value={progress} appearance={progress >= 1 ? 'success' : 'default'} />
+        </Stack>
       )}
 
-      {/* Customer DPA List with Clause Quotes */}
-      {state.dpas.length > 0 && (
-        <Box padding="space.150">
-          <Stack space="space.150">
-            <Heading as="h4">Customer Data Processing Agreements ({state.dpas.length})</Heading>
+      <Tabs id="admin-tabs">
+        <TabList>
+          <Tab>Contracts</Tab>
+          <Tab>Vendors</Tab>
+          <Tab>Evaluation</Tab>
+          <Tab>Walkthrough</Tab>
+        </TabList>
 
-            {state.dpas.map((dpa) => (
-              <Box
-                key={dpa.id}
-                padding="space.150"
-                backgroundColor="color.background.neutral.subtle"
-              >
-                <Stack space="space.100">
-                  <Inline space="space.100" spread="space-between" alignBlock="center">
-                    <Inline space="space.100">
-                      <Text weight="bold">{dpa.customerName}</Text>
-                      <Text size="small" color="color.text.subtlest">({dpa.country})</Text>
+        {/* Contracts */}
+        <TabPanel>
+          <Box paddingBlockStart="space.200">
+            <Stack space="space.200">
+              <Inline space="space.150" rowSpace="space.100" shouldWrap>
+                <Box xcss={{ flexGrow: 1, minWidth: '220px', maxWidth: '420px' }}>
+                  <Textfield
+                    placeholder="Search customer or country"
+                    value={query}
+                    onChange={(e: any) => setQuery(e.target.value)}
+                  />
+                </Box>
+                <Box xcss={{ minWidth: '200px' }}>
+                  <Select
+                    appearance="default"
+                    options={FILTER_OPTIONS}
+                    value={FILTER_OPTIONS.find((o) => o.value === filter)}
+                    onChange={(o: any) => setFilter((o?.value as StatusFilter) || 'all')}
+                  />
+                </Box>
+              </Inline>
+
+              {state.loading ? (
+                <Spinner />
+              ) : state.dpaCount === 0 ? (
+                <EmptyState
+                  header="No contracts yet"
+                  description="Load the Ayo Payroll sample to add 41 fictional customer DPAs, 9 approved vendors and the demo Jira tickets."
+                  primaryAction={
+                    <Button appearance="primary" onClick={handleSeed} isDisabled={state.seeding}>
+                      Load sample data
+                    </Button>
+                  }
+                />
+              ) : (
+                <DynamicTable
+                  head={dpaTable.head}
+                  rows={dpaTable.rows}
+                  rowsPerPage={10}
+                  defaultSortKey="customer"
+                  defaultSortOrder="ASC"
+                  emptyView={<Text>No contracts match your filters.</Text>}
+                />
+              )}
+            </Stack>
+          </Box>
+        </TabPanel>
+
+        {/* Vendors */}
+        <TabPanel>
+          <Box paddingBlockStart="space.200">
+            {state.vendors.length === 0 ? (
+              <EmptyState header="No approved vendors" description="Vendors appear here once the sample data is loaded." />
+            ) : (
+              <DynamicTable head={vendorTable.head} rows={vendorTable.rows} defaultSortKey="name" defaultSortOrder="ASC" />
+            )}
+          </Box>
+        </TabPanel>
+
+        {/* Evaluation */}
+        <TabPanel>
+          <Box paddingBlockStart="space.200">
+            <Stack space="space.200">
+              <Text color="color.text.subtlest">
+                Compares extracted terms against a hand-labelled answer key for all {state.dpaCount || 41} contracts.
+              </Text>
+              <Inline>
+                <Button onClick={handleRunBenchmark} isDisabled={benchmarking}>
+                  {benchmarking ? 'Running…' : bench ? 'Re-run evaluation' : 'Run evaluation'}
+                </Button>
+              </Inline>
+              {bench && (
+                <Box xcss={card}>
+                  <Stack space="space.200">
+                    <Inline space="space.100" alignBlock="center">
+                      <Heading as="h4">Extraction accuracy</Heading>
+                      <Lozenge appearance={bench.overallStatus === 'PASS' ? 'success' : 'removed'} isBold>
+                        {bench.overallStatus}
+                      </Lozenge>
                     </Inline>
-                    <Inline space="space.100">
-                      {dpa.status === 'confirmed' ? (
-                        <Lozenge appearance="success">Confirmed</Lozenge>
-                      ) : dpa.status === 'unclear' || dpa.noticeUnit === 'unclear' ? (
-                        <Lozenge appearance="removed">Unclear: Counsel Review</Lozenge>
-                      ) : (
-                        <Lozenge appearance="inprogress">Unconfirmed</Lozenge>
-                      )}
-                      {dpa.remedy === 'terminate' && (
-                        <Lozenge appearance="removed">Termination Right</Lozenge>
-                      )}
-                      {dpa.locationRestriction === 'EU_UK_ONLY' && (
-                        <Lozenge appearance="moved">EU/UK Only</Lozenge>
-                      )}
-                      {dpa.status !== 'confirmed' && dpa.noticeUnit !== 'unclear' && (
-                        <Button
-                          appearance="subtle"
-                          onClick={() => handleConfirm(dpa.id)}
-                        >
-                          Confirm
-                        </Button>
-                      )}
-                    </Inline>
-                  </Inline>
+                    <DynamicTable
+                      head={{
+                        cells: [
+                          { key: 'metric', content: 'Metric' },
+                          { key: 'result', content: 'Result' },
+                        ],
+                      }}
+                      rows={benchRows.map(([m, r]) => ({
+                        key: m,
+                        cells: [{ content: <Text>{m}</Text> }, { content: <Text weight="semibold">{r}</Text> }],
+                      }))}
+                    />
+                  </Stack>
+                </Box>
+              )}
+            </Stack>
+          </Box>
+        </TabPanel>
 
-                  <Inline space="space.200">
-                    <Text size="small">
-                      <Text weight="semibold">Notice:</Text>{' '}
-                      {dpa.noticePeriodDays ? `${dpa.noticePeriodDays} days (${dpa.noticeUnit})` : 'Unclear / Indefinite'}
+        {/* Walkthrough */}
+        <TabPanel>
+          <Box paddingBlockStart="space.200">
+            <Box xcss={card}>
+              <Stack space="space.200">
+                <Heading as="h4">Try it in Jira</Heading>
+                <Stack space="space.150">
+                  <Field label="1 · Review the register">
+                    <Text>
+                      Two customers hold termination remedies (Nordic Logistics, Caledonia Finance) and three restrict data to the EU/UK.
                     </Text>
-                    <Text size="small">
-                      <Text weight="semibold">Objection:</Text>{' '}
-                      {dpa.objectionWindowDays ? `${dpa.objectionWindowDays} days` : 'Unspecified'}
+                  </Field>
+                  <Field label="2 · New vendor">
+                    <Text>
+                      Create an ENG ticket: “Add session replay to payslip screen using Glimpse”. The issue panel shows a 60-day release hold.
                     </Text>
-                    <Text size="small">
-                      <Text weight="semibold">Remedy:</Text> {dpa.remedy}
+                  </Field>
+                  <Field label="3 · Existing vendor">
+                    <Text>
+                      Create an ENG ticket: “Upgrade ErrorSentry SDK to v8”. No hold is raised.
                     </Text>
-                  </Inline>
+                  </Field>
+                </Stack>
+              </Stack>
+            </Box>
+          </Box>
+        </TabPanel>
+      </Tabs>
 
-                  {/* Serif clause quote */}
-                  <Box
-                    padding="space.100"
-                    backgroundColor="color.background.neutral.subtle"
-                  >
-                    <Text size="small">
-                      &ldquo;{dpa.exactClause}&rdquo;
-                    </Text>
+      <Footnote />
+
+      {/* Clause review modal */}
+      <ModalTransition>
+        {selected && (
+          <Modal onClose={() => setSelected(null)} width="medium">
+            <ModalHeader>
+              <ModalTitle>{selected.customerName}</ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              <Stack space="space.200">
+                <Inline space="space.100" shouldWrap alignBlock="center">
+                  {statusLozenge(selected)}
+                  <Text color="color.text.subtlest">{selected.country}</Text>
+                </Inline>
+                <FieldRow>
+                  <Field label="Notice period">{noticeText(selected)}</Field>
+                  <Field label="Objection window">
+                    {selected.objectionWindowDays ? `${selected.objectionWindowDays} days` : 'Not stated'}
+                  </Field>
+                  <Field label="Remedy">{selected.remedy}</Field>
+                  <Field label="Location">
+                    {selected.locationRestriction === 'EU_UK_ONLY' ? 'EU/UK only' : 'No restriction'}
+                  </Field>
+                </FieldRow>
+                <Stack space="space.075">
+                  <Text size="small" color="color.text.subtlest">Clause as written in the DPA</Text>
+                  <Box xcss={quote}>
+                    <Text>“{selected.exactClause}”</Text>
                   </Box>
                 </Stack>
-              </Box>
-            ))}
-          </Stack>
-        </Box>
-      )}
-
-      {/* Mandatory Legal Disclaimer */}
-      <Text size="small" color="color.text.subtlest">
-        Aviso Previo summarizes your contracts. It is not legal advice.
-      </Text>
+                {isUnclear(selected) && (
+                  <SectionMessage appearance="warning" title="Counsel review required">
+                    <Text>This clause is ambiguous, so it will not trigger a release hold until a person resolves it.</Text>
+                  </SectionMessage>
+                )}
+              </Stack>
+            </ModalBody>
+            <ModalFooter>
+              <Button appearance="subtle" onClick={() => setSelected(null)}>Close</Button>
+              {selected.status !== 'confirmed' && !isUnclear(selected) && (
+                <Button appearance="primary" onClick={() => handleConfirm(selected.id)}>
+                  Confirm terms
+                </Button>
+              )}
+            </ModalFooter>
+          </Modal>
+        )}
+      </ModalTransition>
     </Stack>
   );
 };
