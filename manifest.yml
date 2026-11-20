@@ -1,4 +1,13 @@
 modules:
+  jira:issueGlance:
+    - key: aviso-previo-issue-glance
+      title: Aviso Previo
+      label: Aviso Previo
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+      render: native
+      resource: main
+      resolver:
+        function: resolver
   jira:issuePanel:
     - key: aviso-previo-issue-panel
       title: Aviso Previo

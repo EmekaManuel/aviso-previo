@@ -81,7 +81,7 @@ Description: ${description}
 
   try {
     const response = await chat({
-      model: 'claude-haiku-4-5',
+      model: 'claude-sonnet-4-5-20250929',
       messages: [
         { role: 'system', content: TICKET_CLASSIFIER_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },

@@ -12,7 +12,7 @@ import ForgeReconciler, {
   Spinner,
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
-import { Footnote, Kpi, Field, card, tint, quote } from './ui';
+import { Footnote, Kpi, Field, card, cardHighlight, cardAlert, cardSuccess, tint, quote } from './ui';
 
 interface IssueAssessment {
   issueKey: string;
@@ -60,7 +60,7 @@ const IssuePanelApp = () => {
         console.error('Error fetching issue assessment:', err);
         // Fallback for default spike view
         setAssessment({
-          issueKey: 'ENG-142',
+          issueKey: 'ENG-2',
           classification: 'NEW_SUBPROCESSOR',
           vendor: 'Glimpse',
           affectedCustomers: 41,
@@ -120,7 +120,7 @@ const IssuePanelApp = () => {
           ? {
               ...prev,
               overridden: true,
-              overriddenBy: 'Engineer / Counsel',
+              overriddenBy: 'Legal Counsel (Ayo Payroll)',
               overrideReason: reason,
             }
           : null
@@ -133,10 +133,12 @@ const IssuePanelApp = () => {
 
   if (loading) {
     return (
-      <Inline space="space.100" alignBlock="center">
-        <Spinner size="small" />
-        <Text color="color.text.subtlest">Checking contract commitments…</Text>
-      </Inline>
+      <Box padding="space.150">
+        <Inline space="space.100" alignBlock="center">
+          <Spinner size="small" />
+          <Text color="color.text.subtlest">Scanning customer DPA commitments…</Text>
+        </Inline>
+      </Box>
     );
   }
 
@@ -148,72 +150,90 @@ const IssuePanelApp = () => {
   const goLive = assessment.earliestGoLiveDate || '19 January 2027';
   const cls = assessment.classification;
 
-  // Quiet states: nothing for the engineer to do.
+  // Quiet state: Approved vendor or unrelated ticket
   if (cls === 'EXISTING_VENDOR_NO_CHANGE' || cls === 'UNRELATED') {
     return (
-      <Stack space="space.150">
-        <Inline space="space.100" alignBlock="center" shouldWrap>
-          <Lozenge appearance="success" isBold>No action needed</Lozenge>
-          <Text color="color.text.subtlest">Aviso Previo</Text>
-        </Inline>
-        <Text>
-          {cls === 'EXISTING_VENDOR_NO_CHANGE'
-            ? `Routine change for approved vendor ${vendor}. No new customer notice is triggered.`
-            : 'No third-party data processing changes detected on this ticket.'}
-        </Text>
-        <Footnote />
-      </Stack>
+      <Box xcss={cardSuccess}>
+        <Stack space="space.150">
+          <Inline space="space.100" alignBlock="center" shouldWrap>
+            <Lozenge appearance="success" isBold>
+              Release Allowed
+            </Lozenge>
+            <Heading as="h4">Aviso Previo · No Hold</Heading>
+          </Inline>
+          <Text>
+            {cls === 'EXISTING_VENDOR_NO_CHANGE'
+              ? `Routine change for approved subprocessor ${vendor}. Hosting location is unchanged, so 0 customer notice days are required.`
+              : 'No third-party subprocessor or customer data egress changes detected on this ticket.'}
+          </Text>
+          <Footnote />
+        </Stack>
+      </Box>
     );
   }
 
+  // Synthetic or Sandbox evaluation (no customer data)
   if (cls === 'NO_CUSTOMER_DATA') {
     return (
-      <Stack space="space.150">
-        <Inline space="space.100" alignBlock="center" shouldWrap>
-          <Lozenge appearance={confirmedNoData ? 'success' : 'inprogress'} isBold>
-            {confirmedNoData ? 'Confirmed' : 'Confirmation needed'}
-          </Lozenge>
-          <Heading as="h4">{vendor}</Heading>
-        </Inline>
-        <Text>
-          This ticket mentions {vendor} in a staging or synthetic-data context. If no customer personal data is processed, no notice is required.
-        </Text>
-        {!confirmedNoData && (
-          <Inline>
-            <Button appearance="primary" onClick={handleConfirmSynthetic}>
-              Confirm synthetic data only
-            </Button>
+      <Box xcss={card}>
+        <Stack space="space.150">
+          <Inline space="space.100" alignBlock="center" shouldWrap>
+            <Lozenge appearance={confirmedNoData ? 'success' : 'inprogress'} isBold>
+              {confirmedNoData ? 'Synthetic Data Confirmed' : 'Confirmation Needed'}
+            </Lozenge>
+            <Heading as="h4">{vendor} Evaluation</Heading>
           </Inline>
-        )}
-        <Footnote />
-      </Stack>
+          <Text>
+            This ticket indicates {vendor} will be used exclusively in a staging environment with synthetic or mock data. If no customer personal data is processed, customer DPA notice is not required.
+          </Text>
+          {!confirmedNoData && (
+            <Inline>
+              <Button appearance="primary" onClick={handleConfirmSynthetic}>
+                Confirm Synthetic Data Only (No PII)
+              </Button>
+            </Inline>
+          )}
+          <Footnote />
+        </Stack>
+      </Box>
     );
   }
 
-  const GoLiveCard = (
-    <Box xcss={card}>
+  const EarliestGoLiveBanner = (
+    <Box xcss={cardHighlight}>
       <Stack space="space.150">
-        <Stack space="space.050">
-          <Text size="small" color="color.text.subtlest">Earliest permitted go-live</Text>
-          <Heading as="h2">{goLive}</Heading>
-        </Stack>
-        {assessment.legalRequestKey ? (
-          <Inline space="space.100" alignBlock="center" shouldWrap>
-            <Text size="small" color="color.text.subtlest">Privacy request</Text>
-            <Lozenge appearance="inprogress">{assessment.legalRequestKey}</Lozenge>
-          </Inline>
-        ) : (
-          <Inline>
-            <Button appearance="primary" onClick={handleCreateLegalNotice} isDisabled={requestingLegal}>
-              {requestingLegal ? 'Opening request…' : 'Notify privacy counsel'}
-            </Button>
-          </Inline>
-        )}
+        <Inline spread="space-between" alignBlock="center" shouldWrap rowSpace="space.100">
+          <Stack space="space.050">
+            <Text size="small" color="color.text.subtlest">
+              Earliest Permitted Go-Live Date (Release Hold)
+            </Text>
+            <Heading as="h2">{goLive}</Heading>
+            <Text size="small" color="color.text.subtlest">
+              Calculated deterministically from 60-day DPA window · Cannot be bypassed by code changes
+            </Text>
+          </Stack>
+          <Box>
+            {assessment.legalRequestKey ? (
+              <Inline space="space.050" alignBlock="center">
+                <Text size="small" color="color.text.subtlest">Notice Request:</Text>
+                <Lozenge appearance="inprogress" isBold>{assessment.legalRequestKey}</Lozenge>
+              </Inline>
+            ) : (
+              <Button
+                appearance="primary"
+                onClick={handleCreateLegalNotice}
+                isDisabled={requestingLegal}
+              >
+                {requestingLegal ? 'Opening Request…' : 'Notify Privacy Counsel'}
+              </Button>
+            )}
+          </Box>
+        </Inline>
       </Stack>
     </Box>
   );
 
-  // Location change (existing vendor moves region)
+  // Location change (existing vendor moving to different region)
   if (cls === 'LOCATION_CHANGE') {
     const customers = assessment.conflictingCustomers?.length
       ? assessment.conflictingCustomers
@@ -224,104 +244,142 @@ const IssuePanelApp = () => {
         ];
     return (
       <Stack space="space.200">
-        <Stack space="space.100">
-          <Inline space="space.100" alignBlock="center" shouldWrap>
-            <Lozenge appearance="removed" isBold>Release hold</Lozenge>
-            <Heading as="h4">{vendor} is moving data processing</Heading>
-          </Inline>
-          <Text color="color.text.subtlest">
-            Processing moves from the EU to the US. {customers.length} customer DPAs forbid processing outside the EU/UK.
-          </Text>
-        </Stack>
-        {GoLiveCard}
+        <Box xcss={cardAlert}>
+          <Stack space="space.100">
+            <Inline space="space.100" alignBlock="center" shouldWrap>
+              <Lozenge appearance="removed" isBold>Release Hold Active</Lozenge>
+              <Heading as="h4">{vendor} Data Center Region Migration</Heading>
+            </Inline>
+            <Text>
+              Processing moves outside the European Union. 3 customer DPAs strictly forbid customer data transfer outside the EU/UK.
+            </Text>
+          </Stack>
+        </Box>
+
+        {EarliestGoLiveBanner}
+
         <Stack space="space.075">
-          <Text size="small" color="color.text.subtlest">Affected customers</Text>
+          <Text size="small" color="color.text.subtlest">Customers with Explicit EU/UK Data Residency Clauses</Text>
           <Box xcss={tint}>
-            <Stack space="space.075">
+            <Stack space="space.050">
               {customers.map((c) => (
-                <Text key={c}>{c}</Text>
+                <Text key={c} weight="semibold">• {c}</Text>
               ))}
             </Stack>
           </Box>
         </Stack>
+
         <Footnote />
       </Stack>
     );
   }
 
-  // New subprocessor
+  // New subprocessor (e.g. Glimpse on ENG-2)
   return (
     <Stack space="space.200">
-      <Stack space="space.100">
-        <Inline space="space.100" alignBlock="center" shouldWrap>
-          {assessment.overridden ? (
-            <Lozenge appearance="moved" isBold>Hold overridden</Lozenge>
-          ) : (
-            <Lozenge appearance="removed" isBold>Release hold</Lozenge>
-          )}
-          <Heading as="h4">New subprocessor: {vendor}</Heading>
-        </Inline>
-        <Text color="color.text.subtlest">
-          Customers must be notified before {vendor} can process their data.
-        </Text>
-      </Stack>
+      {/* Top Hold Alert Card */}
+      <Box xcss={cardAlert}>
+        <Stack space="space.100">
+          <Inline space="space.100" alignBlock="center" shouldWrap>
+            {assessment.overridden ? (
+              <Lozenge appearance="moved" isBold>Hold Overridden</Lozenge>
+            ) : (
+              <Lozenge appearance="removed" isBold>Release Hold Active</Lozenge>
+            )}
+            <Heading as="h4">New Subprocessor Detected: {vendor}</Heading>
+          </Inline>
+          <Text>
+            Enterprise DPAs require prior written customer notice before {vendor} can process production customer payroll data. Workflow validator blocks transition to 'Done'.
+          </Text>
+        </Stack>
+      </Box>
 
-      {GoLiveCard}
+      {/* Earliest Permitted Go-Live Card */}
+      {EarliestGoLiveBanner}
 
+      {/* Key Obligations Grid */}
       <Inline space="space.100" rowSpace="space.100" shouldWrap>
-        <Kpi label="Affected customers" value={assessment.affectedCustomers ?? 41} hint="33 × 30 days · 6 × 60 days" />
-        <Kpi label="Longest notice" value={`${assessment.longestNoticeDays ?? 60} days`} />
-        <Kpi label="Termination rights" value={assessment.terminationRightsCount ?? 2} hint="Customer may object and leave" />
-        <Kpi label="Region conflicts" value={assessment.locationConflictsCount ?? 3} hint="EU/UK-only DPAs; vendor hosts in US" />
+        <Kpi
+          label="Affected Customers"
+          value={assessment.affectedCustomers ?? 41}
+          hint="All signed enterprise DPAs"
+        />
+        <Kpi
+          label="Notice Window"
+          value={`${assessment.longestNoticeDays ?? 60} Days`}
+          hint="Calculated in code"
+          highlight
+        />
+        <Kpi
+          label="Termination Remedies"
+          value={assessment.terminationRightsCount ?? 2}
+          hint="Nordic & Caledonia"
+        />
+        <Kpi
+          label="Region Conflicts"
+          value={assessment.locationConflictsCount ?? 3}
+          hint="Forbid US egress"
+        />
       </Inline>
 
-      <Stack space="space.075">
-        <Inline space="space.100" alignBlock="center" shouldWrap>
-          <Text size="small" color="color.text.subtlest">
-            Binding clause · {assessment.sampleClauseCustomer || 'Nordic Logistics AS'}
-          </Text>
-          <Lozenge appearance="success">Confirmed by counsel</Lozenge>
-        </Inline>
-        <Box xcss={quote}>
-          <Text>
-            “{assessment.sampleClauseQuote ||
-              'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.'}”
-          </Text>
-        </Box>
-      </Stack>
+      {/* Verbatim Contract Evidence Card */}
+      <Box xcss={card}>
+        <Stack space="space.100">
+          <Inline spread="space-between" alignBlock="center" shouldWrap>
+            <Inline space="space.100" alignBlock="center">
+              <Text size="small" color="color.text.subtlest">
+                Binding DPA Clause:
+              </Text>
+              <Text size="small" weight="semibold">
+                {assessment.sampleClauseCustomer || 'Nordic Logistics AS (Norway)'}
+              </Text>
+            </Inline>
+            <Lozenge appearance="success">Confirmed by Legal Counsel</Lozenge>
+          </Inline>
+          <Box xcss={quote}>
+            <Text>
+              “{assessment.sampleClauseQuote ||
+                'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.'}”
+            </Text>
+          </Box>
+        </Stack>
+      </Box>
 
-      <Stack space="space.100">
+      {/* Action Toolbar: Draft Notice & Counsel Override */}
+      <Stack space="space.150">
         <Inline space="space.100" shouldWrap>
           <Button onClick={() => setShowDraftNotice(!showDraftNotice)}>
-            {showDraftNotice ? 'Hide draft notice' : 'View draft customer notice'}
+            {showDraftNotice ? 'Hide Draft Notice Email' : 'View Draft Customer Notice Email'}
           </Button>
           {!assessment.overridden && !showOverrideInput && (
             <Button appearance="subtle" onClick={() => setShowOverrideInput(true)}>
-              Override hold
+              Counsel Override
             </Button>
           )}
         </Inline>
 
         {showDraftNotice && (
           <Box xcss={card}>
-            <Stack space="space.100">
-              <Field label="Subject">
+            <Stack space="space.150">
+              <Field label="Subject Line">
                 {assessment.draftNotice?.subject ||
                   '[Prior Notice] Notice of New Subprocessor Appointment — Ayo Payroll'}
               </Field>
-              <Stack space="space.025">
-                <Text size="small" color="color.text.subtlest">Body</Text>
-                <Text>
-                  {assessment.draftNotice?.body ||
-                    `Dear Customer,\n\nPursuant to Section 7 of our Data Processing Agreement, this is prior written notice that Ayo Payroll Ltd intends to authorize the following subprocessor:\n\n• Name: ${vendor}\n• Purpose: Session replay debugging for authenticated payslips\n• Hosting location: United States\n• Earliest deployment: ${goLive}\n\nPlease contact privacy@ayopayroll.com before the date above.`}
-                </Text>
+              <Stack space="space.050">
+                <Text size="small" color="color.text.subtlest">Notice Email Body</Text>
+                <Box xcss={tint}>
+                  <Text>
+                    {assessment.draftNotice?.body ||
+                      `Dear Customer,\n\nPursuant to Section 7 of our Data Processing Agreement, this is prior written notice that Ayo Payroll Ltd intends to authorize the following new subprocessor:\n\n• Subprocessor Name: ${vendor}\n• Purpose: Session replay debugging for authenticated payslip and tax screens\n• Hosting Location: United States (Multi-tenant)\n• Earliest Production Deployment: ${goLive}\n\nIf you have questions or wish to exercise contractual objection rights, please contact privacy@ayopayroll.com before the deployment date above.`}
+                  </Text>
+                </Box>
               </Stack>
             </Stack>
           </Box>
         )}
 
         {assessment.overridden ? (
-          <SectionMessage appearance="warning" title="Hold overridden">
+          <SectionMessage appearance="warning" title="Release Hold Overridden by Legal Counsel">
             <Text>
               {assessment.overriddenBy}: {assessment.overrideReason}
             </Text>
@@ -329,13 +387,13 @@ const IssuePanelApp = () => {
         ) : (
           showOverrideInput && (
             <Box xcss={card}>
-              <Stack space="space.100">
-                <Text weight="semibold">Override justification</Text>
+              <Stack space="space.150">
+                <Heading as="h4">Authorized Counsel Override</Heading>
                 <Text size="small" color="color.text.subtlest">
-                  Recorded against {assessment.issueKey} and visible to counsel.
+                  An authorized legal officer may override the workflow release hold. This justification is permanently recorded in KVS and audit logs.
                 </Text>
                 <Textfield
-                  placeholder="e.g. Vendor agreed to EU data residency addendum"
+                  placeholder="Enter legal rationale (e.g. Customer signed custom amendment agreeing to early rollout)"
                   value={overrideText}
                   onChange={(e: any) => setOverrideText(e.target.value)}
                 />
@@ -345,7 +403,7 @@ const IssuePanelApp = () => {
                     isDisabled={!overrideText.trim()}
                     onClick={handleApplyOverride}
                   >
-                    Override hold
+                    Confirm Override & Unlock Transition
                   </Button>
                   <Button appearance="subtle" onClick={() => setShowOverrideInput(false)}>
                     Cancel

@@ -71,7 +71,7 @@ resolver.define('testLLM', async (req) => {
       'You are Aviso Previo. In one short sentence, identify if the tool "Glimpse" is a new subprocessor for customer payroll data based on: "Add session replay to payslip screen using Glimpse".';
 
     const response = await chat({
-      model: 'claude-haiku-4-5',
+      model: 'claude-sonnet-4-5-20250929',
       messages: [
         {
           role: 'user',
