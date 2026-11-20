@@ -7,6 +7,14 @@ modules:
       resource: main
       resolver:
         function: resolver
+  jira:issueContext:
+    - key: aviso-previo-issue-context
+      title: Aviso Previo
+      label: Aviso Previo
+      render: native
+      resource: main
+      resolver:
+        function: resolver
   jira:adminPage:
     - key: aviso-previo-admin-page
       title: Aviso Previo Admin
