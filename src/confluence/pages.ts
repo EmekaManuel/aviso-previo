@@ -69,3 +69,19 @@ export async function getPageText(pageId: string): Promise<string> {
   const data = await res.json();
   return htmlToText(data.body?.storage?.value ?? '');
 }
+
+/** The contracts space id if it exists. Never creates it (safe to call from a read path). */
+export async function findSpaceId(): Promise<string | null> {
+  const res = await api.asApp().requestConfluence(route`/wiki/api/v2/spaces?keys=${SPACE_KEY}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.results?.[0]?.id ?? null;
+}
+
+/** The id of the page with this exact title in the space, or null. */
+export async function findPageId(spaceId: string, title: string): Promise<string | null> {
+  const res = await api.asApp().requestConfluence(route`/wiki/api/v2/pages?space-id=${spaceId}&title=${title}&limit=1`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.results?.[0]?.id ?? null;
+}

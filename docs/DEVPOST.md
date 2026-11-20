@@ -61,7 +61,7 @@ The panel drafts a customer notice from the ticket and the contracts. **Notify p
 ### 7. A Rovo agent and MCP tools
 An **Aviso Previo** Rovo agent, with a bounded prompt that makes it use its tools for every contract fact, can run `check-subprocessor-commitments` (what would adding this vendor commit us to), `explain-customer-term` (the verbatim clause for a customer) and `open-privacy-notice-request`. The same tools are exposed through `rovo:mcp` for other agents and clients.
 
-*Ask the agent from Jira (Ask Rovo in Jira). Forge storage is per product install, so the register is read there; two copies of the agent appear, one per install.*
+*Two copies of the agent appear, one per install, and both answer. Forge storage is per product install, so the Jira install publishes a read-only copy of the register to Confluence for the other. Opening a privacy request needs Jira's ticket records, so it must be done from Jira.*
 
 ### 8. Contracts and tickets in the Teamwork Graph
 A `graph:connector` ingests each customer DPA as an `atlassian:document` and associates it with the Jira issues whose release hold it binds. Contracts and work are then connected in the graph, so Rovo can answer which contracts a ticket touches and which tickets a contract constrains. An admin connects it once; the admin page shows the last sync.

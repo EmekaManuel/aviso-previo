@@ -1,6 +1,7 @@
 import { evaluateHold, parseHostingRegion } from '../engine/holdPolicy';
 import { createOrFetchLegalRequest } from '../legal/legalRequest';
-import { loadRegister, loadVendors } from '../storage/register';
+import { loadRegister } from '../storage/register';
+import { loadRegisterShared, loadVendorsShared } from '../storage/mirror';
 import type { HostingRegion } from '../types';
 import type { TicketClassification } from '../classification/ticketClassifier';
 
@@ -28,8 +29,8 @@ export async function checkSubprocessorAction(payload: ActionPayload, _context?:
   const hostingText = String(inputs.hostingLocation || '').trim();
   if (!vendorName) return fail('Missing required input "vendor". Please provide a vendor name to check.');
 
-  const [terms, vendors] = await Promise.all([loadRegister(), loadVendors()]);
-  if (terms.length === 0) return fail('No customer contracts are loaded in this installation of Aviso Previo. Aviso Previo keeps its register per product: load it under Aviso Previo Admin in Jira, and ask this agent from Jira (the Ask Rovo button in Jira).');
+  const [terms, vendors] = await Promise.all([loadRegisterShared(), loadVendorsShared()]);
+  if (terms.length === 0) return fail('No customer contracts are loaded yet. Load the sample or the register under Aviso Previo Admin in Jira, then ask again.');
 
   const approved = vendors.find((v) => v.name.toLowerCase() === vendorName.toLowerCase());
   const region: HostingRegion = parseHostingRegion(hostingText);
@@ -81,8 +82,8 @@ export async function explainTermAction(payload: ActionPayload, _context?: any) 
   const query = String(getInputs(payload).customerName || '').toLowerCase().trim();
   if (!query) return fail('Missing required input "customerName". Please specify a customer name or DPA ID.');
 
-  const terms = await loadRegister();
-  if (terms.length === 0) return fail('No customer contracts are loaded in this installation of Aviso Previo. Aviso Previo keeps its register per product: load it under Aviso Previo Admin in Jira, and ask this agent from Jira (the Ask Rovo button in Jira).');
+  const terms = await loadRegisterShared();
+  if (terms.length === 0) return fail('No customer contracts are loaded yet. Load the sample or the register under Aviso Previo Admin in Jira, then ask again.');
 
   const dpa = terms.find((d) => d.id.toLowerCase() === query || d.customerName.toLowerCase().includes(query));
   if (!dpa) return fail(`No customer DPA found matching "${getInputs(payload).customerName}".`);
@@ -116,6 +117,11 @@ export async function openNoticeAction(payload: ActionPayload, _context?: any) {
   const issueKey = String(inputs.issueKey || '').trim().toUpperCase();
   if (!issueKey) return fail('Missing required input "issueKey". Please give the Jira issue that introduces the change.');
 
+  // Ticket decisions and notice clocks live in the Jira install. From another product's install there
+  // is nothing to continue, and starting a second clock for the same ticket would be wrong.
+  if ((await loadRegister()).length === 0) {
+    return fail('Opening a privacy request needs this site\'s ticket records, which are kept in Jira. Ask this agent from Jira (the Ask Rovo button in Jira) to open the request.');
+  }
   try {
     const draft = await createOrFetchLegalRequest(issueKey);
     return {

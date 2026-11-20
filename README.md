@@ -62,7 +62,7 @@
 - **The vendor's hosting region comes from the ticket text.** If the ticket does not say, the region is treated as outside the EU/UK.
 - **The workflow validator may call the model.** The first assessment of an unseen ticket reads it from Jira and classifies it; later checks use the stored decision.
 - **Rovo and MCP tools are tested directly,** not through a live Rovo or external MCP client. The Rovo agent is deployed, but its answers have not been evaluated.
-- **The register lives in the Jira install's storage.** Forge storage is per product install, so the agent answers from the register when it is asked in Jira. Asked from Confluence it says the register is not loaded there and points to Jira. Two copies of the agent appear (one per install); either works in Jira.
+- **The register is authoritative in the Jira install.** Forge storage is per product install, so a shared read-only copy is published as a Confluence page ("Aviso Previo register (managed by the app, do not edit)") and the Rovo agent reads it when asked from Confluence. Opening a privacy request needs Jira's ticket records, so from Confluence the agent points you to Jira. Two copies of the agent appear (one per install); both answer.
 - **The Teamwork Graph sync is tested against a fake graph client.** It only runs after an admin connects the connector, and the shape of what the graph accepts is confirmed by the live **Sync now** result, not by this repo's tests.
 - **Sample data only.** Aviso Previo summarizes contracts and is not legal advice.
 

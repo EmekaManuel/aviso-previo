@@ -7,6 +7,8 @@ import { createOrFetchLegalRequest } from '../legal/legalRequest';
 import { loadRegister, loadVendors, saveDpa } from '../storage/register';
 import { getPageText } from '../confluence/pages';
 import { getGraphStatus, syncContractsToGraph } from '../graph/contractGraph';
+import { afterRegisterChange } from '../storage/afterChange';
+import { ensureRegisterMirror } from '../storage/mirror';
 import { extractDPATerms, ExtractedDPATerms } from '../extraction/extractor';
 import { scoreContract } from '../evaluation/scoring';
 import type { DpaRecord } from '../types';
@@ -93,13 +95,14 @@ resolver.define('overrideIssueDecision', async (req) => {
 resolver.define('seedStep', async (req) => {
   const { step, offset } = req.payload as { step: SeedStep; offset?: number };
   const result = await runSeedStep(step, offset ?? 0);
-  if (result.done && step === 'confluence') await syncContractsToGraph().catch(() => null);
+  if (result.done && step === 'confluence') await afterRegisterChange();
   return result;
 });
 
 /** Admin: the register as it stands. */
 resolver.define('getAdminState', async () => {
   const [dpas, vendors] = await Promise.all([loadRegister(), loadVendors()]);
+  if (dpas.length > 0) await ensureRegisterMirror().catch((e) => console.warn('Register mirror:', e?.message));
   const confirmedCount = dpas.filter((d) => d.status === 'confirmed').length;
   const unclearCount = dpas.filter((d) => d.status === 'unclear' || (d.status !== 'confirmed' && d.noticeUnit === 'unclear')).length;
   return { dpaCount: dpas.length, vendorCount: vendors.length, confirmedCount, unclearCount, dpas, vendors };
@@ -114,7 +117,7 @@ resolver.define('confirmDPA', async (req) => {
     throw new Error('This clause is ambiguous. Resolve it with a notice period before confirming.');
   }
   await saveDpa({ ...dpa, status: 'confirmed', confirmedAt: new Date().toISOString(), confirmedBy: actor(req) });
-  await syncContractsToGraph().catch(() => null);
+  await afterRegisterChange();
   return { success: true, dpaId };
 });
 
@@ -128,7 +131,7 @@ resolver.define('confirmAllDPAs', async (req) => {
       confirmedCount++;
     }
   }
-  await syncContractsToGraph().catch(() => null);
+  await afterRegisterChange();
   return { success: true, confirmedCount };
 });
 
@@ -153,7 +156,7 @@ resolver.define('resolveDPA', async (req) => {
     confirmedAt: new Date().toISOString(),
     confirmedBy: actor(req),
   });
-  await syncContractsToGraph().catch(() => null);
+  await afterRegisterChange();
   return { success: true, dpaId };
 });
 
@@ -210,7 +213,7 @@ resolver.define('applyExtraction', async (req) => {
     confirmedBy: null,
     resolvedByCounsel: false,
   });
-  await syncContractsToGraph().catch(() => null);
+  await afterRegisterChange();
   return { success: true, status: unclear ? 'unclear' : 'draft' };
 });
 
