@@ -71,13 +71,23 @@ export const jira = {
 export const confluence = {
   pages: new Map<string, { id: string; title: string; body: string; version: number }>(),
   calls: [] as string[],
+  /** Simulates a site where the CONTRACTS space cannot be created, so a fallback space is used. */
+  noContractsSpace: false,
   reset() {
     this.pages.clear();
     this.calls = [];
+    this.noContractsSpace = false;
   },
   handle(path: string, opts: any = {}): Resp {
     this.calls.push(`${opts.method || 'GET'} ${path}`);
-    if (path.startsWith('/wiki/api/v2/spaces?keys=')) return resp({ results: [{ id: 'S1', key: 'CONTRACTS' }] });
+    if (path.startsWith('/wiki/api/v2/spaces?keys=')) return this.noContractsSpace ? resp({ results: [] }) : resp({ results: [{ id: 'S1', key: 'CONTRACTS' }] });
+    if (path === '/wiki/api/v2/spaces' && opts.method === 'POST') return this.noContractsSpace ? resp({}, 403) : resp({ id: 'S1' });
+    if (path === '/wiki/api/v2/spaces?limit=1') return resp({ results: [{ id: 'S9', key: 'EO', name: 'Employee Onboarding' }] });
+    const anySpace = path.match(/^\/wiki\/api\/v2\/pages\?title=(.+)&limit=1$/);
+    if (anySpace) {
+      const hit = [...this.pages.values()].find((p) => p.title === anySpace[1]);
+      return resp({ results: hit ? [{ id: hit.id }] : [] });
+    }
     const byTitle = path.match(/^\/wiki\/api\/v2\/pages\?space-id=\w+&title=(.+)&limit=1$/);
     if (byTitle) {
       const hit = [...this.pages.values()].find((p) => p.title === byTitle[1]);

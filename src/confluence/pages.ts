@@ -85,3 +85,12 @@ export async function findPageId(spaceId: string, title: string): Promise<string
   const data = await res.json();
   return data.results?.[0]?.id ?? null;
 }
+
+/** The id of a page with this exact title in any space, or null. Used to find the shared register
+ *  copy even when the contracts space could not be created and a fallback space was used. */
+export async function findPageIdAnywhere(title: string): Promise<string | null> {
+  const res = await api.asApp().requestConfluence(route`/wiki/api/v2/pages?title=${title}&limit=1`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.results?.[0]?.id ?? null;
+}

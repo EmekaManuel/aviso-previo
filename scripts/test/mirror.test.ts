@@ -109,3 +109,14 @@ test('opening the admin page creates the shared copy for a register that predate
   await handler.getAdminState({ payload: {}, context: {} });
   assert.equal(confluence.calls.filter((c) => c.startsWith('POST') || c.startsWith('PUT')).length, writes, 'the second open must not rewrite it');
 });
+
+test('on a site where the contracts space cannot be created, the shared copy is still found', async () => {
+  confluence.noContractsSpace = true;
+  assert.equal(await publishRegisterMirror(), true); // written to the fallback space
+  asConfluenceInstall();
+  const snap = await readRegisterMirror();
+  assert.equal(snap!.terms.length, 41);
+  const r: any = await checkSubprocessorAction({ inputs: { vendor: 'Glimpse', hostingLocation: 'United States' } });
+  assert.equal(r.success, true);
+  assert.equal(r.confirmedCustomerDpas, 40);
+});

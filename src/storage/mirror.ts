@@ -1,4 +1,4 @@
-import { ensureSpace, findPageId, findSpaceId, getPageText, upsertPage } from '../confluence/pages';
+import { ensureSpace, findPageIdAnywhere, getPageText, upsertPage } from '../confluence/pages';
 import type { DpaRecord } from '../types';
 import { loadRegister, loadVendors, VendorRecord } from './register';
 
@@ -38,9 +38,7 @@ export async function publishRegisterMirror(): Promise<boolean> {
 
 /** Reads the shared snapshot, or null if there is none or it cannot be understood. */
 export async function readRegisterMirror(): Promise<Snapshot | null> {
-  const spaceId = await findSpaceId();
-  if (!spaceId) return null;
-  const pageId = await findPageId(spaceId, MIRROR_TITLE);
+  const pageId = await findPageIdAnywhere(MIRROR_TITLE);
   if (!pageId) return null;
   const text = await getPageText(pageId);
   const at = text.indexOf(MARK);
@@ -69,7 +67,6 @@ export async function loadVendorsShared(): Promise<VendorRecord[]> {
 
 /** Publishes the shared copy only if there is none yet (for a register that existed before the mirror did). */
 export async function ensureRegisterMirror(): Promise<void> {
-  const spaceId = await findSpaceId();
-  if (spaceId && (await findPageId(spaceId, MIRROR_TITLE))) return;
+  if (await findPageIdAnywhere(MIRROR_TITLE)) return;
   await publishRegisterMirror();
 }
