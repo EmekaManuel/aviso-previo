@@ -215,7 +215,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'Ayo Payroll will give thirty (30) days prior electronic notice of new subprocessors. Objections must be communicated within 14 calendar days.',
+      'Ayo Payroll will give thirty (30) calendar days prior electronic notice of new subprocessors. Objections must be communicated within 14 calendar days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -230,7 +230,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'The Contractor agrees to provide 30 days prior written notice before sub-contracting any data processing operations. Company has 30 days to review security credentials.',
+      'The Contractor agrees to provide 30 calendar days prior written notice before sub-contracting any data processing operations. Company has 30 days to review security credentials.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -309,7 +309,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'portal',
     locationRestriction: 'NONE',
     exactClause:
-      'Ayo Payroll maintains an online list of subprocessors and will provide 30 days advance notice of any additions. Objections must be registered within 15 days.',
+      'Ayo Payroll maintains an online list of subprocessors and will provide 30 calendar days advance notice of any additions. Objections must be registered within 15 days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -354,7 +354,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'written_notice',
     locationRestriction: 'NONE',
     exactClause:
-      'The Auftragsverarbeiter shall notify the Auftraggeber at least 30 days before engaging a sub-contractor. The Auftraggeber has 14 days to raise legitimate objections.',
+      'The Auftragsverarbeiter shall notify the Auftraggeber at least 30 calendar days before engaging a sub-contractor. The Auftraggeber has 14 days to raise legitimate objections.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -384,7 +384,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'Supplier must provide thirty (30) days prior notification of any prospective new sub-processor, with 30 days allowed for Customer objection.',
+      'Supplier must provide thirty (30) calendar days prior notification of any prospective new sub-processor, with 30 days allowed for Customer objection.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -463,7 +463,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'Notice of at least 30 days is mandatory prior to onboarding any new subcontractor handling payroll records. Objections permitted within 15 days.',
+      'Notice of at least 30 calendar days is mandatory prior to onboarding any new subcontractor handling payroll records. Objections permitted within 15 days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -544,7 +544,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'written_notice',
     locationRestriction: 'NONE',
     exactClause:
-      'Customer requires sixty (60) days prior formal notice of any subprocessor appointment. Objections may be filed within thirty (30) days.',
+      'Customer requires sixty (60) calendar days prior formal notice of any subprocessor appointment. Objections may be filed within thirty (30) days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -561,7 +561,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'Notice of 30 days will be given prior to new subprocessor commencement. Objections within 14 days.',
+      'Notice of 30 calendar days will be given prior to new subprocessor commencement. Objections within 14 days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -606,7 +606,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'The Supplier agrees to give thirty (30) days notice prior to adding any sub-tier processor. Customer objection period is 20 days.',
+      'The Supplier agrees to give thirty (30) calendar days notice prior to adding any sub-tier processor. Customer objection period is 20 days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -621,7 +621,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'portal',
     locationRestriction: 'NONE',
     exactClause:
-      'Subprocessor notifications will be posted with 30 days advance notice. Customer may object within 15 days.',
+      'Subprocessor notifications will be posted with 30 calendar days advance notice. Customer may object within 15 days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -681,7 +681,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'Notice of 30 days is required prior to introducing new vendors touching customer information. Objections permitted within 15 days.',
+      'Notice of 30 calendar days is required prior to introducing new vendors touching customer information. Objections permitted within 15 days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -696,7 +696,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'Supplier must provide thirty (30) days prior notification of new sub-processors, with thirty (30) days for Customer review.',
+      'Supplier must provide thirty (30) calendar days prior notification of new sub-processors, with thirty (30) days for Customer review.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },
@@ -711,7 +711,7 @@ export const CUSTOMER_DPAS: DPATermSeed[] = [
     noticeMethod: 'email',
     locationRestriction: 'NONE',
     exactClause:
-      'The Supplier will give 30 days notice before deploying any new subprocessor. Customer may submit reasonable objections within 15 days.',
+      'The Supplier will give 30 calendar days notice before deploying any new subprocessor. Customer may submit reasonable objections within 15 days.',
     isBuriedInDataTransfer: false,
     expectedStatus: 'confirmed',
   },

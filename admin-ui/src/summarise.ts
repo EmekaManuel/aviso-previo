@@ -12,6 +12,10 @@ export interface EvalSummary {
   verbatim: number;
   confidentlyWrong: number;
   wrong: ScoreRow[];
+  /** Gave a different answer with confidence. */
+  wrongAnswers: number;
+  /** Said it could not decide where the label has an answer: cautious, not wrong. */
+  declined: number;
 }
 
 /** Adds up the per-contract rows. Contracts the model could not read are counted as errors, not as wrong. */
@@ -29,6 +33,8 @@ export function summarise(rows: ScoreRow[]): EvalSummary {
     unclear: [n((r) => r.expected?.unit === 'unclear' && !!r.got?.unclear), n((r) => r.expected?.unit === 'unclear')],
     verbatim: n((r) => !!r.clauseVerbatim),
     confidentlyWrong: n((r) => !!r.confidentlyWrong),
+    wrongAnswers: n((r) => !r.got?.unclear && (!r.noticeOk || !r.unitOk || !r.terminationOk || !r.locationOk)),
+    declined: n((r) => !!r.got?.unclear && r.expected?.unit !== 'unclear'),
     wrong: ok.filter((r) => !r.noticeOk || !r.unitOk || !r.terminationOk || !r.locationOk || !r.unclearOk),
   };
 }

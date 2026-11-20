@@ -46,7 +46,8 @@ export default function App() {
   const seed = async () => {
     setBusy(true);
     try {
-      await loadSample(setSeedMsg);
+      // A reload refreshes the register and contract pages only; the Jira tickets already exist.
+      await loadSample(setSeedMsg, { skipJira: data.dpaCount > 0 });
       await load();
       say('Sample data loaded');
     } catch (e: any) {

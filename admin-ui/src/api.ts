@@ -58,11 +58,13 @@ export const api: Api = inForge
     };
 
 /** Loads the sample company: storage, Jira, then the Confluence pages a few at a time. */
-export async function loadSample(onProgress: (message: string) => void): Promise<void> {
+export async function loadSample(onProgress: (message: string) => void, opts: { skipJira?: boolean } = {}): Promise<void> {
   onProgress('Loading the register…');
   await api.seedStep('storage');
-  onProgress('Creating the Jira project and tickets…');
-  await api.seedStep('jira');
+  if (!opts.skipJira) {
+    onProgress('Creating the Jira project and tickets…');
+    await api.seedStep('jira');
+  }
   let offset = 0;
   for (;;) {
     onProgress(`Writing contract pages to Confluence… ${offset}/41`);

@@ -50,6 +50,11 @@ export function Evaluation({ rows, total, running, finished, onRun }: Props) {
               </span>
             )}
           </div>
+          <div className="row" style={{ gap: 28, padding: '14px 0 6px', borderTop: '1px solid var(--line)' }}>
+            <span><b className="num">{s.wrongAnswers}</b> <span className="muted">wrong answers</span></span>
+            <span><b className="num">{s.declined}</b> <span className="muted">declined to guess</span></span>
+            <span><b className="num">{s.scored - s.wrong.length}</b> <span className="muted">matched the label exactly</span></span>
+          </div>
           {lines.map(([label, a, b]) => (
             <div className="metric" key={label}>
               <span>{label}</span>
