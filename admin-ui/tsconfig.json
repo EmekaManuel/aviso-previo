@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
@@ -11,5 +15,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true
   },
-  "include": ["src", "vite.config.ts", "../src/data/seedData.ts"]
+  "include": [
+    "src",
+    "panel",
+    "vite.config.ts",
+    "vite.panel.config.ts",
+    "../src/data/seedData.ts"
+  ]
 }

@@ -6,3 +6,4 @@ dist/
 .DS_Store
 
 admin-ui/dist/
+admin-ui/dist-panel/

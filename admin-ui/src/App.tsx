@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import type { AdminState, Benchmark, DPA } from './types';
-import { Mark } from './ui';
 import { Overview } from './Overview';
 import { Register } from './Register';
 import { Vendors } from './Vendors';
@@ -51,21 +50,7 @@ export default function App() {
 
   return (
     <div className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <Mark size={28} />
-          <span className="brand-name">Aviso Previo</span>
-          <span className="brand-sep" />
-          <span className="brand-sub">Subprocessor register</span>
-        </div>
-        <div className="row">
-          <span className="pill plain">Sample data · Fictional</span>
-          {data.dpaCount > 0 && (
-            <button className="btn" disabled={busy} onClick={() => run(api.seed, 'Sample data reloaded')}>Reload sample</button>
-          )}
-        </div>
-      </header>
-
+      <div className="bar">
       <nav className="tabs" role="tablist" aria-label="Sections">
         {tabs.map(([id, label, n]) => (
           <button key={id} role="tab" className="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
@@ -73,6 +58,13 @@ export default function App() {
           </button>
         ))}
       </nav>
+        <div className="row bar-actions">
+          <span className="pill plain">Sample data · Fictional</span>
+          {data.dpaCount > 0 && (
+            <button className="btn" disabled={busy} onClick={() => run(api.seed, 'Sample data reloaded')}>Reload sample</button>
+          )}
+        </div>
+      </div>
 
       <main>
         {loading ? (

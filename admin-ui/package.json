@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "build": "tsc --noEmit && vite build && vite build -c vite.panel.config.ts",
+    "preview": "vite preview",
+    "dev:panel": "vite -c vite.panel.config.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

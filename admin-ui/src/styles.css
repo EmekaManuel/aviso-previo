@@ -312,3 +312,20 @@ body { font-size: 14px; }
 @media (max-width: 860px) {
   .hero, .split { grid-template-columns: 1fr; }
 }
+
+/* header removed: tabs and actions share one row */
+.shell { padding-top: 28px; }
+.bar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px 24px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 40px; }
+.bar .tabs { border-bottom: 0; margin-bottom: 0; max-width: 100%; }
+.bar-actions { padding-bottom: 8px; }
+@media (max-width: 640px) { .shell { padding-top: 20px; } .bar { margin-bottom: 28px; } .bar-actions { padding-bottom: 12px; } }
+
+/* Jira's mode wins over the OS setting once view.theme.enable() has run */
+html[data-color-mode='light'] {
+  --paper: #fcfcfb; --surface: #fcfcfb; --surface-2: #f5f5f3; --ink: #141414; --ink-2: #4a4a47; --ink-3: #8b8b86;
+  --line: #ebebe7; --line-strong: #d9d9d3; --teal: #0b7a70; --teal-ink: #0b7a70; --amber: #b07a16; --red: #b4372e; color-scheme: light;
+}
+html[data-color-mode='dark'] {
+  --paper: #0e0e0f; --surface: #0e0e0f; --surface-2: #171718; --ink: #ededea; --ink-2: #b9b9b4; --ink-3: #7c7c77;
+  --line: #232325; --line-strong: #333336; --teal: #4fd1c1; --teal-ink: #4fd1c1; --amber: #e5b04e; --red: #f08178; color-scheme: dark;
+}
