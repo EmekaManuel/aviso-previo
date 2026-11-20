@@ -29,7 +29,7 @@ export async function checkSubprocessorAction(payload: ActionPayload, _context?:
   if (!vendorName) return fail('Missing required input "vendor". Please provide a vendor name to check.');
 
   const [terms, vendors] = await Promise.all([loadRegister(), loadVendors()]);
-  if (terms.length === 0) return fail('No customer contracts are loaded yet. Load and confirm the register in the Aviso Previo admin page first.');
+  if (terms.length === 0) return fail('No customer contracts are loaded in this installation of Aviso Previo. Aviso Previo keeps its register per product: load it under Aviso Previo Admin in Jira, and ask this agent from Jira (the Ask Rovo button in Jira).');
 
   const approved = vendors.find((v) => v.name.toLowerCase() === vendorName.toLowerCase());
   const region: HostingRegion = parseHostingRegion(hostingText);
@@ -82,7 +82,7 @@ export async function explainTermAction(payload: ActionPayload, _context?: any) 
   if (!query) return fail('Missing required input "customerName". Please specify a customer name or DPA ID.');
 
   const terms = await loadRegister();
-  if (terms.length === 0) return fail('No customer contracts are loaded yet. Load the register in the Aviso Previo admin page first.');
+  if (terms.length === 0) return fail('No customer contracts are loaded in this installation of Aviso Previo. Aviso Previo keeps its register per product: load it under Aviso Previo Admin in Jira, and ask this agent from Jira (the Ask Rovo button in Jira).');
 
   const dpa = terms.find((d) => d.id.toLowerCase() === query || d.customerName.toLowerCase().includes(query));
   if (!dpa) return fail(`No customer DPA found matching "${getInputs(payload).customerName}".`);

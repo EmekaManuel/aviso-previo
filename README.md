@@ -45,7 +45,7 @@
 8. Open *Upgrade ErrorSentry SDK to v8*. The vendor is approved, so the panel says **No action needed** and the transition goes through. Then open *Evaluate Glimpse in sandbox with synthetic data only*: the panel asks someone to **Confirm synthetic data only**, and moving it to Done is blocked until they do, because a wrongly "synthetic" ticket is how real customer data would slip through.
 
 9. **Teamwork Graph (optional, admin, one time).** Open admin.atlassian.com, then **Connectors**, find **Aviso Previo Contracts** and click **Add connector**. The contracts are added to the graph and linked to the tickets you have viewed. The admin overview shows the last sync, and **Sync now** repeats it.
-10. **Rovo agent.** Open Rovo chat, pick the **Aviso Previo** agent and ask *What would adding Glimpse commit us to?* It answers from the register through its tools, never from memory.
+10. **Rovo agent.** In **Jira**, click **Ask Rovo**, pick the **Aviso Previo** agent and ask *What would adding Glimpse commit us to?* It answers from the register through its tools, never from memory.
 
 **Atlassian, concretely.**
 - **Jira workflow validator:** blocks release-type transitions on a held ticket and says why, with the date ([`validator/index.ts`](src/validator/index.ts)). A counsel override with a recorded reason lifts the hold. If a ticket cannot be assessed, the transition is blocked.
@@ -62,6 +62,7 @@
 - **The vendor's hosting region comes from the ticket text.** If the ticket does not say, the region is treated as outside the EU/UK.
 - **The workflow validator may call the model.** The first assessment of an unseen ticket reads it from Jira and classifies it; later checks use the stored decision.
 - **Rovo and MCP tools are tested directly,** not through a live Rovo or external MCP client. The Rovo agent is deployed, but its answers have not been evaluated.
+- **The register lives in the Jira install's storage.** Forge storage is per product install, so the agent answers from the register when it is asked in Jira. Asked from Confluence it says the register is not loaded there and points to Jira. Two copies of the agent appear (one per install); either works in Jira.
 - **The Teamwork Graph sync is tested against a fake graph client.** It only runs after an admin connects the connector, and the shape of what the graph accepts is confirmed by the live **Sync now** result, not by this repo's tests.
 - **Sample data only.** Aviso Previo summarizes contracts and is not legal advice.
 
