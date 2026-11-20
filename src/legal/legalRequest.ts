@@ -1,5 +1,6 @@
 import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
+import { assessIssue } from '../assessment/assessIssue';
 
 export interface LegalNoticeDraft {
   requestKey: string;
@@ -13,118 +14,72 @@ export interface LegalNoticeDraft {
   draftEmailBody: string;
 }
 
-/**
- * Generates ready-to-send draft email notice text for Privacy Counsel.
- */
-export function generateDraftCustomerNotice(
-  vendor: string,
-  purpose: string,
-  location: string,
-  earliestDate: string
-): { subject: string; body: string } {
-  const subject = `[Prior Notice] Notice of New Subprocessor Appointment — Ayo Payroll`;
+const doc = (lines: string[]) => ({
+  type: 'doc',
+  version: 1,
+  content: lines.map((text) => ({ type: 'paragraph', content: text ? [{ type: 'text', text }] : [] })),
+});
 
-  const body = `Dear Customer,
-
-Pursuant to Section 7 (Engagement of Subprocessors) of our Data Processing Agreement (DPA), this communication serves as prior written notice that Ayo Payroll Ltd intends to authorize the following third-party subprocessor:
-
-• Subprocessor Name: ${vendor}
-• Purpose of Processing: ${purpose}
-• Categories of Data: Authenticated employee payslip DOM interaction events
-• Infrastructure Hosting Location: ${location}
-• Earliest Permitted Deployment: ${earliestDate}
-
-Under the terms of your agreement, your objection window is now open. Should you have any data protection inquiries or formal objections, please contact our Data Protection Officer at privacy@ayopayroll.com before the deployment date above.
-
-Sincerely,
-Privacy & Data Governance Team
-Ayo Payroll Ltd`;
-
-  return { subject, body };
+async function projectExists(key: string): Promise<boolean> {
+  const res = await api.asApp().requestJira(route`/rest/api/3/project/${key}`);
+  return res.ok;
 }
 
 /**
- * Creates or updates a Legal JSM request for Privacy Counsel.
+ * Opens a privacy request in Jira for counsel, or returns the one already linked
+ * to the ticket. It is created in project `PRIV` when that exists, otherwise in
+ * the ticket's own project. If Jira refuses, this throws: it never invents a key.
  */
-export async function createOrFetchLegalRequest(
-  issueKey: string,
-  vendor: string = 'Glimpse',
-  earliestDate: string = '19 January 2027'
-): Promise<LegalNoticeDraft> {
-  const decisionKey = `decision:${issueKey}`;
-  const decision: any = (await kvs.get(decisionKey)) || {};
-
-  const { subject, body } = generateDraftCustomerNotice(
-    vendor,
-    decision.purpose || 'Session replay analytics for payslip view layout debugging',
-    decision.vendorLocation || 'United States',
-    earliestDate
-  );
-
-  let requestKey = decision.legalRequestKey || 'PRIV-18';
-
-  // Try creating a real issue in project PRIV or LEGAL if available
-  try {
-    const projCheck = await api.asApp().requestJira(route`/rest/api/3/project/PRIV`);
-    if (projCheck.ok) {
-      const issueRes = await api.asApp().requestJira(route`/rest/api/3/issue`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          fields: {
-            project: { key: 'PRIV' },
-            summary: `[Subprocessor Notice] Customer DPA Notice Window for ${vendor}`,
-            description: {
-              type: 'doc',
-              version: 1,
-              content: [
-                {
-                  type: 'paragraph',
-                  content: [
-                    {
-                      type: 'text',
-                      text: `Automated Aviso Previo Privacy Request for ${issueKey}.\n\nSubprocessor: ${vendor}\nEarliest Go-Live Date: ${earliestDate}\nAffected Customers: 41 DPAs\nLongest Notice: 60 days\n\nDraft Notice Text:\n${body}`,
-                    },
-                  ],
-                },
-              ],
-            },
-            issuetype: { name: 'Task' },
-          },
-        }),
-      });
-
-      if (issueRes.ok) {
-        const createdData = await issueRes.json();
-        requestKey = createdData.key;
-      }
-    }
-  } catch (err: any) {
-    console.warn('JSM PRIV issue creation fallback:', err.message);
+export async function createOrFetchLegalRequest(issueKey: string): Promise<LegalNoticeDraft> {
+  const a = await assessIssue(issueKey);
+  if (!a.draftNotice) {
+    throw new Error(`${issueKey} does not introduce a subprocessor or a location change, so no notice is needed.`);
   }
 
-  // Update KVS decision record with linked legal request key
-  decision.legalRequestKey = requestKey;
-  await kvs.set(decisionKey, decision);
+  let requestKey = a.legalRequestKey;
+  if (!requestKey) {
+    const ticketProject = issueKey.split('-')[0];
+    const projectKey = (await projectExists('PRIV')) ? 'PRIV' : ticketProject;
+    const res = await api.asApp().requestJira(route`/rest/api/3/issue`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          project: { key: projectKey },
+          summary: `[Subprocessor notice] ${a.vendor ?? 'Vendor'} (${issueKey})`,
+          labels: ['privacy-notice'],
+          description: doc([
+            `Aviso Previo opened this request for ${issueKey}.`,
+            `Subprocessor: ${a.vendor ?? 'not named'}`,
+            `Earliest permitted go-live: ${a.earliestGoLiveDate}`,
+            `Customer DPAs affected: ${a.affectedCustomers}; longest notice: ${a.longestNoticeDays} days`,
+            '',
+            `Draft notice subject: ${a.draftNotice.subject}`,
+            '',
+            a.draftNotice.body,
+          ]),
+          issuetype: { name: 'Task' },
+        },
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Jira refused to create the privacy request in ${projectKey} (HTTP ${res.status}).`);
+    }
+    requestKey = (await res.json()).key as string;
+
+    const decision = ((await kvs.get(`decision:${issueKey}`)) as any) ?? {};
+    await kvs.set(`decision:${issueKey}`, { ...decision, legalRequestKey: requestKey });
+  }
 
   return {
     requestKey,
-    vendor,
-    earliestGoLiveDate: earliestDate,
-    affectedCustomerCount: decision.affectedCustomers || 41,
-    longestNoticeDays: decision.longestNoticeDays || 60,
-    terminationCustomers: decision.conflictingCustomers || [
-      'Nordic Logistics AS (Norway)',
-      'Bavaria HealthTech GmbH (Germany)',
-      'Stockholm Retail Group AB (Sweden)',
-    ],
-    locationConflictCustomers: [
-      'Nordic Logistics AS (Norway)',
-      'Bavaria HealthTech GmbH (Germany)',
-      'Stockholm Retail Group AB (Sweden)',
-    ],
-    draftEmailSubject: subject,
-    draftEmailBody: body,
+    vendor: a.vendor ?? '',
+    earliestGoLiveDate: a.earliestGoLiveDate,
+    affectedCustomerCount: a.affectedCustomers,
+    longestNoticeDays: a.longestNoticeDays,
+    terminationCustomers: a.terminationCustomers,
+    locationConflictCustomers: a.conflictingCustomers,
+    draftEmailSubject: a.draftNotice.subject,
+    draftEmailBody: a.draftNotice.body,
   };
 }
-

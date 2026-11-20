@@ -3,8 +3,8 @@
 Every call to `@forge/llm` is logged here. Forge LLMs charge token usage directly to the developer Atlassian account.
 
 Model tiers used:
-- **Claude Sonnet** (`claude-sonnet-4-5`): DPA Extraction (runs once per customer DPA upon contract import).
-- **Claude Haiku** (`claude-haiku-4-5`): Ticket Reading & Vendor Classification (runs on issue create/edit).
+- **Claude** (`claude-sonnet-4-5`): contract extraction. One call per "Read with Claude", and 41 per evaluation run. It is not run automatically on import.
+- **Claude** (`claude-sonnet-4-5-20250929`): ticket classification. One call the first time a ticket is assessed; later checks use the stored decision.
 
 ---
 

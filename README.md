@@ -8,7 +8,7 @@
 
 [Walkthrough](#try-it) · [How it works](#how-it-works) · [What is real, and what is not](#what-is-real-and-what-is-not) · [Docs](docs/)
 
-![Forge](https://img.shields.io/badge/Atlassian-Forge-0052CC) ![Jira](https://img.shields.io/badge/Jira-workflow%20validator-0052CC) ![Confluence](https://img.shields.io/badge/Confluence-contract%20pages-0052CC) ![MCP](https://img.shields.io/badge/Rovo-MCP%20tools-6554C0) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
+![Forge](https://img.shields.io/badge/Atlassian-Forge-0052CC) ![Jira](https://img.shields.io/badge/Jira-workflow%20validator-0052CC) ![Confluence](https://img.shields.io/badge/Confluence-contract%20pages-0052CC) ![MCP](https://img.shields.io/badge/Rovo-MCP%20tools-6554C0) ![tests](https://img.shields.io/badge/tests-50%20passing-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
 </div>
 
@@ -18,35 +18,46 @@
 
 **The problem.** B2B SaaS companies promise enterprise customers 30 to 60 days of written notice before they add a subprocessor or move data out of a region. Engineering finds out about a vendor in a ticket on Monday and ships on Friday. Legal finds out afterwards. One missed notice can be a breach of dozens of contracts, and a few customers can terminate over it. The knowledge needed to prevent this exists, but it sits in contracts in one tool and in tickets in another.
 
-**The idea: a model reads, code decides.** The model's only job is to read a ticket and say what kind of change it is (new vendor, region change, synthetic data only, routine, unrelated) ([`ticketClassifier.ts#L83`](src/classification/ticketClassifier.ts#L83)). Everything that has legal weight is plain TypeScript: the notice date is arithmetic over the contract terms, with calendar and business days handled separately ([`dateCalculator.ts#L22`](src/engine/dateCalculator.ts#L22), [`#L67`](src/engine/dateCalculator.ts#L67)), and the release hold is a deterministic check in the workflow validator ([`validator/index.ts`](src/validator/index.ts)). A vague clause such as "a reasonable period" is never turned into a number: the extraction prompt forces it to `unclear`, for a person to decide ([`extractor.ts#L25`](src/extraction/extractor.ts#L25)). If the model call fails, the classifier falls back to keyword rules instead of failing open ([`ticketClassifier.ts#L112`](src/classification/ticketClassifier.ts#L112)). Every contract term is stored with the exact clause it came from, so counsel can check the term against the wording.
+**The idea: a model reads, code decides.** The model has two jobs. It reads a ticket and says what kind of change it is: new vendor, region change, synthetic data only, routine, or unrelated ([`ticketClassifier.ts#L100`](src/classification/ticketClassifier.ts#L83)). And it reads a contract's Confluence page and quotes the subprocessor clause with its terms ([`extractor.ts#L53`](src/extraction/extractor.ts#L48)). Everything with legal weight is plain TypeScript:
+
+- The notice date is arithmetic over the contract terms, with calendar and business days handled separately ([`dateCalculator.ts`](src/engine/dateCalculator.ts)).
+- Whether a hold applies is one pure function, [`evaluateHold`](src/engine/holdPolicy.ts). Only terms that counsel has **confirmed** count toward the date. If nothing is confirmed, the release is blocked, never allowed.
+- The workflow validator and the issue panel both call the same [`assessIssue`](src/assessment/assessIssue.ts), so they cannot disagree. There are no ticket-specific branches.
+- A vague clause such as "a reasonable period" is never turned into a number: the prompt forces it to `unclear`, and only a person can resolve it ([`extractor.ts#L30`](src/extraction/extractor.ts#L25)).
+- A clause the model quotes must be found word for word in the contract page, or it is rejected ([`text.ts`](src/extraction/text.ts)).
+- If the model call fails, the classifier falls back to cautious rules instead of failing open ([`ticketClassifier.ts`](src/classification/ticketClassifier.ts)).
 
 <p align="center">
-  <img src="docs/img/panel.png" alt="The Aviso Previo issue panel on a ticket that adds Glimpse: release hold, earliest go-live 19 January 2027, 41 customers affected, the binding clause quoted." width="46%" />
+  <img src="docs/img/panel.png" alt="The Aviso Previo issue panel on a ticket that adds Glimpse: release hold, earliest go-live 19 January 2027, 40 confirmed customer contracts, the binding clause quoted." width="46%" />
   &nbsp;
   <img src="docs/img/admin.png" alt="The Aviso Previo admin overview: counsel review progress, obligation profile, and the contracts that need attention." width="52%" />
 </p>
 
-**Try it.** Use the installation link in the Devpost submission, then open the **Aviso Previo Admin** page (Jira settings, Apps).
+**Try it.** Use the installation link in the Devpost submission, then open **Aviso Previo Admin** (Jira settings, Apps).
 
-1. Click **Load sample data**. It creates the fictional company Ayo Payroll: 41 customer DPAs and 9 approved vendors in app storage, a Confluence space `CONTRACTS` with contract pages, and a Jira project `ENG` with four planted tickets.
-2. Open the **Register** tab and click **Apex Health Services PLC**. Its clause says "a reasonable period", so it shows **Counsel to decide** and no date is guessed. Open **Nordic Logistics AS** to see 60 calendar days, a termination right and an EU/UK-only limit, with the clause beside the extracted terms.
-3. Open the ticket *Add session replay to payslip screen using Glimpse*. The **Aviso Previo** panel shows the release hold, **19 January 2027** as the earliest go-live, 41 affected customers and the binding clause. Try to move the ticket to **Done**: the workflow validator refuses it and says why.
-4. Click **View draft customer notice**, then **Notify privacy counsel**. A privacy request is opened.
-5. Open *Upgrade ErrorSentry SDK to v8*. The vendor is already approved, so the panel says **No action needed** and the transition goes through.
+1. Click **Load sample data**. It runs in steps with progress: it loads the fictional company Ayo Payroll into the register (41 customer DPAs with hand-labelled terms, 40 already confirmed by "counsel" and one ambiguous), creates a Jira project `ENG` with four tickets, and writes all 41 contracts as Confluence pages in a `CONTRACTS` space.
+2. Open **Register** and click **Apex Health Services PLC**. Its clause says "a reasonable period", so it shows **Counsel to decide** and no number is guessed. Click **Read with Claude**: the model reads the Confluence page and should agree. Enter a notice period and press **Resolve and confirm** to decide it as counsel.
+3. Open **Nordic Logistics AS** and click **Read with Claude**. The reading is compared with the register field by field, and the quoted clause is checked against the page.
+4. Open **Evaluation** and click **Run evaluation**. The model reads all 41 contracts from Confluence and each answer is scored against its label. This makes 41 Forge LLM calls.
+5. Open the ticket *Add session replay to payslip screen using Glimpse*. The first view classifies it and starts the notice clock. The panel shows the release hold, the earliest go-live (60 days after the first assessment), the confirmed contracts it applies to, and the binding clause. Try to move the ticket to **Done**: the validator refuses and says why.
+6. Click **View draft customer notice**, then **Notify privacy counsel**. A Jira request is created in project `PRIV` if it exists, otherwise in the ticket's own project, and its real key is shown.
+7. Open *Upgrade ErrorSentry SDK to v8*. The vendor is approved, so the panel says **No action needed** and the transition goes through.
 
 **Atlassian, concretely.**
-- **Jira workflow validator:** blocks transitions on a held ticket and tells the person why, with the date ([`validator/index.ts#L79`](src/validator/index.ts#L79)). A counsel override with a recorded reason lifts the hold ([`#L57`](src/validator/index.ts#L57)).
+- **Jira workflow validator:** blocks release-type transitions on a held ticket and says why, with the date ([`validator/index.ts`](src/validator/index.ts)). A counsel override with a recorded reason lifts the hold. If a ticket cannot be assessed, the transition is blocked.
 - **Jira issue panel, glance and context:** one Custom UI bundle shows the assessment where the engineer already works ([`admin-ui/panel/`](admin-ui/panel/)).
-- **Confluence:** the sample contracts are written as pages in a `CONTRACTS` space through the Confluence v2 API ([`seedEngine.ts#L161`](src/seed/seedEngine.ts#L161)).
+- **Confluence:** all 41 sample contracts are written as pages (idempotently, in batches) and read back by the extractor through the Confluence v2 API ([`confluence/pages.ts`](src/confluence/pages.ts), [`seedEngine.ts`](src/seed/seedEngine.ts)).
 - **Rovo MCP tools:** three tools let an agent ask about a vendor, quote a customer's clause, or open a privacy request ([`manifest.yml`](manifest.yml), [`rovo/actions.ts`](src/rovo/actions.ts)).
-- **Forge KVS and Forge LLM:** contract terms and ticket decisions live in `@forge/kvs`; ticket classification uses `@forge/llm`, so contract and ticket text stay inside Atlassian.
+- **Forge KVS and Forge LLM:** the register and ticket decisions live in `@forge/kvs`; classification and extraction use `@forge/llm`, so contract and ticket text stay inside Atlassian.
 
 **Honest limits.**
-- **Contract extraction by the model is written but not wired in.** [`extractDPATerms`](src/extraction/extractor.ts#L48) is never called at runtime. The register is loaded from the seeded sample contracts, which are also written to Confluence, but the app does not yet read Confluence pages back and extract them live.
-- **The release hold is partly hardcoded for the demo tickets.** The validator has explicit branches for the Glimpse ticket and one RelayPost ticket, with fixed messages ([`validator/index.ts#L63`](src/validator/index.ts#L63), [`#L104`](src/validator/index.ts#L104)). Other tickets go through the data-driven path, which reads the stored decision.
-- **Counsel confirmation does not gate holds yet.** Confirming a term updates the register, but the validator and date engine do not filter on it.
-- **The extraction and ticket scores are from rule-based scripts,** not from the Forge LLM, and the admin's "Run evaluation" shows fixed numbers. Details in [Tests](#tests-and-verification).
-- **Sample data only.** Everything runs on the fictional Ayo Payroll company. Aviso Previo summarizes contracts and is not legal advice.
+- **The sample register is seeded with hand-labelled terms.** The model reads a contract from Confluence on demand ("Read with Claude") and in the Evaluation tab. It does not yet watch Confluence and ingest new or edited pages by itself.
+- **The notice clock starts when a ticket is first assessed,** not when the customer notice is actually sent.
+- **The live model's accuracy is not recorded in this repo.** Run the Evaluation tab to produce it. The tests use a fake model, and the fallback rules score 28/30 on the labelled tickets after being tuned while looking at that set, so treat that number as optimistic.
+- **The vendor's hosting region comes from the ticket text.** If the ticket does not say, the region is treated as outside the EU/UK.
+- **The workflow validator may call the model.** The first assessment of an unseen ticket reads it from Jira and classifies it; later checks use the stored decision.
+- **Rovo and MCP tools are tested directly,** not through a live Rovo or external MCP client. There is no `rovo:agent` module enabled and Teamwork Graph is not used.
+- **Sample data only.** Aviso Previo summarizes contracts and is not legal advice.
 
 More in [What is real, and what is not](#what-is-real-and-what-is-not).
 
@@ -56,13 +67,15 @@ More in [What is real, and what is not](#what-is-real-and-what-is-not).
 
 - An overview of counsel review progress, the mix of notice periods, termination rights and EU/UK-only limits, and the contracts that need attention first.
 - A searchable, sortable register of all 41 DPAs, filtered by status or by termination right and EU/UK-only.
-- A review drawer that puts the extracted terms beside the clause as signed, with the notice wording highlighted. Ambiguous clauses are marked **Counsel to decide** and cannot be confirmed by a button.
-- Single and bulk confirmation, the approved vendor list with hosting location, and a sample-data loader.
+- A review drawer that puts the terms beside the clause as signed. **Read with Claude** reads the contract's Confluence page and compares field by field; **Use Claude's reading** sends differing terms back to review.
+- Ambiguous clauses are marked **Counsel to decide**. Counsel enters the notice period they read and resolves the contract; a button cannot confirm it.
+- Single and bulk confirmation, the approved vendor list with hosting location, and a stepped sample-data loader with progress.
+- An evaluation that runs the model over every contract and scores it against the labels.
 
 **For engineers (Jira):**
 
-- An issue panel with four states: new subprocessor, region change, synthetic data only, and no action needed.
-- The earliest permitted go-live date, the affected customer count, the longest notice, termination rights, region conflicts and a binding clause quote.
+- An issue panel with five states: new subprocessor, region change, synthetic data only, no action needed, and "contract terms not verified yet".
+- The earliest permitted go-live date, the affected customer count, the longest notice, termination rights, region conflicts and the binding clause quote, all from the confirmed register.
 - A draft customer notice, a one-click privacy request, and a human override that records who and why.
 - A workflow validator that stops a held ticket from reaching Done.
 
@@ -79,21 +92,22 @@ More in [What is real, and what is not](#what-is-real-and-what-is-not).
 | Piece | Platform feature | Where |
 |---|---|---|
 | Release hold | `jira:workflowValidator` | [`src/validator/index.ts`](src/validator/index.ts) |
+| One assessment for panel, validator and tools | Forge functions, `@forge/kvs` | [`src/assessment/assessIssue.ts`](src/assessment/assessIssue.ts) |
 | Engineer view | `jira:issuePanel`, `jira:issueGlance`, `jira:issueContext`, one Custom UI bundle | [`admin-ui/panel/`](admin-ui/panel/) |
 | Counsel workspace | `jira:adminPage`, Custom UI | [`admin-ui/src/`](admin-ui/src/) |
-| Ticket understanding | `@forge/llm` (Claude), with a keyword fallback | [`src/classification/ticketClassifier.ts`](src/classification/ticketClassifier.ts) |
-| Contract extraction (not yet live) | `@forge/llm` with a verbatim-clause and `unclear` contract | [`src/extraction/extractor.ts`](src/extraction/extractor.ts) |
-| Register and decisions | `@forge/kvs` (`dpa:{id}`, `vendor:{key}`, `decision:{issueKey}`) | [`src/resolvers/index.ts`](src/resolvers/index.ts) |
-| Contract pages | Confluence REST v2 | [`src/seed/seedEngine.ts`](src/seed/seedEngine.ts) |
-| Privacy request | Jira REST: creates an issue in project `PRIV` if it exists | [`src/legal/legalRequest.ts`](src/legal/legalRequest.ts) |
+| Ticket understanding | `@forge/llm` (Claude), with a cautious rule fallback | [`src/classification/ticketClassifier.ts`](src/classification/ticketClassifier.ts) |
+| Contract extraction | `@forge/llm`, reading the Confluence page; the clause must be found word for word | [`src/extraction/extractor.ts`](src/extraction/extractor.ts) |
+| Register and decisions | `@forge/kvs` (`dpa:{id}`, `vendor:{key}`, `decision:{issueKey}`) | [`src/storage/register.ts`](src/storage/register.ts) |
+| Contract pages | Confluence REST v2: find the space, create or update pages, read them back | [`src/confluence/pages.ts`](src/confluence/pages.ts) |
+| Privacy request | Jira REST: creates a Task in project `PRIV` if it exists, else in the ticket's project | [`src/legal/legalRequest.ts`](src/legal/legalRequest.ts) |
 | Agent tools | `rovo:mcp` and Rovo `action` modules | [`src/rovo/actions.ts`](src/rovo/actions.ts) |
-| Date engine | Plain TypeScript: calendar and business days | [`src/engine/dateCalculator.ts`](src/engine/dateCalculator.ts) |
+| Date and hold logic | Plain TypeScript: calendar and business days, fail closed | [`src/engine/`](src/engine/) |
 
 Every manifest module, scope and API signature is logged against the Atlassian docs in [docs/FORGE.md](docs/FORGE.md).
 
 ## Full walkthrough
 
-**Judges (no setup):** follow [Try it](#try-it). The most telling check is step 3: try to move the Glimpse ticket to Done.
+**Judges (no setup):** follow [Try it](#try-it). The most telling checks are step 2 (an ambiguous clause is not guessed) and step 5 (try to move the Glimpse ticket to Done).
 
 **Locally:**
 
@@ -101,17 +115,19 @@ Every manifest module, scope and API signature is logged against the Atlassian d
 npm install
 npm --prefix admin-ui install
 npm run build          # type-checks the functions, builds the admin page and the issue panel
-npm test               # four scripts: dates and validator, Rovo tools, and two rule-based benchmarks
+npm test               # 50 tests that run the real modules against fake Jira, Confluence, storage and model
 forge lint
 ```
 
-**Preview the UI without Jira** (sample data, no login):
+**Preview the UI without Jira** (local sample data with a mock server, no login):
 
 ```bash
 cd admin-ui
 npm run dev            # admin page at http://localhost:5173
-npm run dev:panel      # issue panel; add #new, #location, #quiet or #synthetic to the URL
+npm run dev:panel      # issue panel; add #new, #location, #quiet, #synthetic, #elapsed or #unverified to the URL
 ```
+
+The local preview answers from an in-memory mock, so its numbers are not results. The evaluation tab only gives real figures inside Jira.
 
 **Deploy and install:**
 
@@ -124,65 +140,79 @@ forge install --site <your-site>.atlassian.net --product confluence
 
 Custom UI is served from `admin-ui/dist` and `admin-ui/dist-panel`, so run `npm run build` before every `forge deploy`.
 
+**Cost.** Each "Read with Claude" is one Forge LLM call, the evaluation is 41, and each new ticket is classified with one. See [docs/COSTS.md](docs/COSTS.md).
+
 ## Use it from an AI agent
 
-Three tools are exposed through `rovo:mcp`, each backed by a Rovo `action`. They read the same register as the app and always return the disclaimer.
+Three tools are exposed through `rovo:mcp`, each backed by a Rovo `action`. They read the same register the app uses, count only confirmed terms, and always return the disclaimer.
 
 | Tool | Input | Returns |
 |---|---|---|
-| `check-subprocessor-commitments` | `vendor`, optional `hostingLocation` | Whether the vendor is already approved, affected contracts, longest notice, termination rights, region conflicts, earliest go-live |
-| `explain-customer-term` | `customerName` (name or id such as `CUST-001`) | The verbatim clause, notice days and unit, objection window, remedy |
-| `open-privacy-notice-request` | `issueKey`, `vendor` | A privacy request and a draft customer notice |
+| `check-subprocessor-commitments` | `vendor`, optional `hostingLocation` | Whether the vendor is approved, how many confirmed contracts apply, longest notice, termination rights, region conflicts, a what-if earliest go-live from today |
+| `explain-customer-term` | `customerName` (name or id such as `CUST-001`) | The verbatim clause, notice days and unit, objection window, remedy, and whether counsel has confirmed it |
+| `open-privacy-notice-request` | `issueKey` | A real Jira privacy request (or the one already linked) and a draft customer notice |
 
-[`scripts/test-rovo.js`](scripts/test-rovo.js) calls the actions directly (23 checks). It does not drive them through a live Rovo or external MCP client.
+An empty register is an error, not an invented answer, and a failed Jira call is an error, not a made-up key.
 
 ## How it works
 
 ```mermaid
 flowchart LR
-  C[Confluence<br/>customer DPA pages] -. sample data .-> R[(Forge KVS<br/>register + decisions)]
+  C[Confluence<br/>41 contract pages] -->|read on demand| X[Forge LLM<br/>extract terms + verbatim clause]
+  X --> R[(Forge KVS<br/>register: draft, confirmed, unclear)]
+  Counsel[Privacy counsel<br/>confirm or resolve] --> R
   J[Jira ticket] --> L[Forge LLM<br/>classify the change]
-  L --> D[Decision<br/>date engine in TypeScript]
-  R --> D
-  D --> P[Issue panel<br/>go-live date, clause, actions]
-  D --> V[Workflow validator<br/>blocks transition to Done]
-  R --> A[Admin page<br/>counsel review]
+  L --> A[assessIssue]
+  R --> A
+  A --> H[evaluateHold<br/>pure TypeScript]
+  H --> P[Issue panel]
+  H --> V[Workflow validator<br/>blocks transition to Done]
   R --> M[Rovo MCP tools]
 ```
 
-**The date** is computed in one pure function. The start is the day the ticket is assessed, and the hold runs to the end of the longest applicable notice period. Contracts that say business days skip Saturdays and Sundays; contracts that say calendar days do not.
+**The date** is computed in one pure function. The clock starts the first time a ticket is assessed and is stored with the decision, so it does not slide forward as time passes. The hold runs to the end of the longest notice period among the contracts that apply.
 
 ```
-for each applicable DPA:
+for each applicable DPA (confirmed terms only):
     if unit == business_days:  unlock = addBusinessDays(start, days)   # weekends skipped
     else:                      unlock = addCalendarDays(start, days)
 earliestGoLive = max(unlock)           # the longest notice wins
+hold is active while now < earliestGoLive
+
+new vendor  -> every confirmed contract applies
+region move -> only EU/UK-restricted contracts apply (unknown region = outside EU/UK)
+nothing confirmed -> blocked (fails closed)
 ```
 
 **Design rules**
 
-- The model never does arithmetic and never makes a legal decision. It labels a ticket, or it flags a clause as `unclear`.
-- A failed or malformed model reply degrades to rules and never to "allowed".
-- Every extracted term keeps its verbatim clause so a person can check it.
-- Counsel can override a hold, and the override records who and why.
+- The model never does arithmetic and never makes a legal decision. It labels a ticket, or it quotes and reads a clause.
+- A failed or malformed model reply degrades to rules or to `unclear`, never to "allowed".
+- Every extracted term keeps its verbatim clause, and a quote that is not in the contract is rejected.
+- Counsel confirmation gates what counts. Counsel can also override a hold, and the override records who and why.
+- Numbers on screen come from the register at the moment you look, not from a stored copy.
 - The admin page and the issue panel follow Jira's light and dark mode.
 
 ```
 src/
   index.ts                  Exports the resolver, validator and Rovo actions
-  resolvers/index.ts        Everything the UI calls: assessment, register, confirm, override, seed
-  validator/                Jira workflow validator (the release hold)
-  engine/dateCalculator.ts  Calendar and business-day notice dates
-  classification/           Ticket classifier (Forge LLM with a keyword fallback)
-  extraction/               Contract extractor (Forge LLM; not yet wired in)
-  legal/                    Draft customer notice and privacy request
+  resolvers/index.ts        Everything the UI calls: assessment, register, confirm, resolve, extract, evaluate, seed steps
+  assessment/               assessIssue: the one place a ticket is assessed
+  engine/                   dateCalculator (dates) and holdPolicy (does a hold apply?)
+  validator/                Jira workflow validator
+  classification/           Ticket classifier (Forge LLM with a cautious rule fallback)
+  extraction/               Contract extractor, verbatim-clause check, HTML to text
+  evaluation/               Scores a model reading against a label
+  confluence/               Find or create the space, upsert pages, read a page
+  storage/                  Register and vendor reads from KVS
+  legal/                    Draft customer notice and the Jira privacy request
   rovo/                     MCP and Rovo actions
   seed/, data/              The fictional Ayo Payroll sample: 41 DPAs, 9 vendors, planted tickets
 admin-ui/
   src/                      Admin page (Custom UI, React + Vite)
   panel/                    Issue panel, glance and context (Custom UI)
 assets/                     Logo, icons, cover and BRAND.md
-scripts/                    Benchmarks and tests (npm test)
+scripts/test/               The tests, with fake Jira, Confluence, storage and model
 docs/                       Forge reference, storage decision, costs, Devpost and video notes
 ```
 
@@ -192,33 +222,37 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 
 | Criterion | Where to look |
 |---|---|
-| Technological implementation | A working workflow validator, a deterministic date engine with a weekend rule, a ticket classifier with a safe fallback, a register in KVS, three Rovo tools, Confluence and Jira writes. The gaps are listed above, not hidden. |
+| Technological implementation | A workflow validator and issue panel driven by one data-driven assessment, a deterministic date engine, model-based ticket classification and contract extraction with a verbatim-clause check, an evaluation that runs the model over 41 Confluence pages, a counsel review and resolution flow, three Rovo tools, real Confluence and Jira reads and writes, and 50 tests that run the actual modules. The limits are listed above. |
 | Design | One minimal system across admin and issue panel: [assets/BRAND.md](assets/BRAND.md). Responsive down to the Jira sidebar, light and dark. |
 | Potential impact | Subprocessor-notice breaches are a real, specific contractual risk for any SaaS company with enterprise customers. The audience is privacy counsel, DPOs and the engineers who ship. |
-| Innovation | Contract commitments checked at the moment a ticket changes status, instead of in a spreadsheet after the fact, and a model that is deliberately kept away from the decision. |
-| Presentation | The demo path is [Try it](#try-it): load data, review a clause, try to ship the Glimpse ticket, see it blocked. |
+| Innovation | Contract commitments checked at the moment a ticket changes status, instead of in a spreadsheet after the fact, with a model that is kept away from the decision and made to prove its quotes. |
+| Presentation | The demo path is [Try it](#try-it): load data, resolve an ambiguous clause, read a contract with Claude, try to ship the Glimpse ticket, see it blocked. |
 
 ## What is real, and what is not
 
-**Built and tested** (`npm test`):
+**Built and tested** (`npm test`, 50 tests with the real modules and a fake Jira, Confluence, storage and model):
 
-- The date engine: calendar days, business days that skip weekends, the longest notice winning, and its use by the validator (8 checks in [`scripts/test-dates.js`](scripts/test-dates.js)).
-- The three Rovo actions: inputs, outputs, missing-input errors and the disclaimer (23 checks).
-- The ticket classification rules on 30 labelled tickets (29 correct, no missed new subprocessors) and the extraction rules on 41 contracts. See the note below on what these measure.
+- The date engine: calendar days, business days that skip weekends, UTC-safe, the longest notice winning (12 tests, with the hold policy).
+- The hold policy: only confirmed terms count, it fails closed when nothing is confirmed, region changes only touch restricted contracts, an unknown region counts as outside, and the clock does not slide.
+- The workflow validator on arbitrary ticket keys: it blocks with numbers from the register, allows moves before release, honours a counsel override, ends when the window passes, and blocks when the ticket cannot be read (10 tests).
+- The classifier: model reply parsing, the fallback when the model fails, and the fallback rules on 30 labelled tickets (3 tests).
+- The extractor: verbatim-clause verification, rejection of an invented clause, failures reported as errors, and the scoring of a reading against a label (9 tests).
+- The Rovo tools: new, approved and moved vendors, the empty-register error, ambiguous clauses, and privacy requests created for real, idempotent, and never faked (12 tests).
+- The Confluence seeding: one page per contract in batches, safe to repeat, and readable back as text (4 tests).
 
 **Built, not covered by automated tests:**
 
-- The Custom UI admin page and issue panel (checked by hand and in a browser with sample data).
-- The Confluence and Jira seeding, the privacy request, and the workflow validator running inside a live Jira site.
+- The Custom UI admin page and issue panel (checked by hand and in a browser with a mock server).
+- The calls to the real Jira, Confluence and Forge LLM APIs. The tests replace them with fakes; the app is deployed to a development site.
+- A recorded accuracy run of the live model. The Evaluation tab produces one; the figures are not stored in this repo.
 
 **Not built, or not what it might sound like:**
 
-- **Live extraction from Confluence.** The extractor exists and its prompt enforces the `unclear` rule, but nothing calls it. The register comes from seeded data.
-- **Fully data-driven holds.** The validator has Glimpse and RelayPost ticket branches with fixed text, and the sample decision for the Glimpse ticket is stored with a fixed date.
-- **Counsel confirmation as a gate.** It is recorded, but holds do not depend on it. The admin overview copy says terms "only block a release once confirmed", which describes the intended behavior, not the current one.
-- **A measured model benchmark.** The scores below come from rule-based scripts. The admin's "Run evaluation" returns fixed values ([`resolvers/index.ts#L340`](src/resolvers/index.ts#L340)).
-- **Vendor region check.** The date and conflict logic assume a new vendor stores data in the US.
-- **The privacy request is a fallback when no `PRIV` project exists.** It then returns the key `PRIV-18` without creating a ticket.
+- **Automatic ingestion.** The register is seeded with labelled terms. The model re-reads a contract on demand and in the evaluation, but nothing watches Confluence for new or edited contracts.
+- **The sample "counsel" confirmations.** 40 of 41 contracts are pre-confirmed in the sample so the hold works immediately.
+- **Notice sent versus assessed.** The clock starts at first assessment, not when the notice goes out.
+- **Hosting region.** It is read from the ticket text, with unknown treated as outside the EU/UK.
+- **Live-model classification accuracy** is not measured here.
 - **Rovo agent and Teamwork Graph.** No `rovo:agent` module is enabled and the app does not use Teamwork Graph.
 - **Marketplace.** The app is not listed.
 
@@ -228,14 +262,16 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 npm test
 ```
 
-| Script | What it checks | Result |
-|---|---|---|
-| [`score-extraction.js`](scripts/score-extraction.js) | A rule-based extraction over the 41 seeded contracts against the answer key: notice days, unit, termination, EU/UK limits, one `unclear` | 41/41 on notice and unit, 2/2 termination, 3/3 location, 0 confident errors |
-| [`score-tickets.js`](scripts/score-tickets.js) | A rule-based classifier over 30 labelled tickets | 29/30 (96.7%), 8/8 new subprocessors, 3/3 location changes |
-| [`test-dates.js`](scripts/test-dates.js) | Weekend skipping, the 60-day case, validator halts and override | 8/8 |
-| [`test-rovo.js`](scripts/test-rovo.js) | Tool inputs, outputs and disclaimers | 23/23 |
+| File | What it checks |
+|---|---|
+| [`engine.test.ts`](scripts/test/engine.test.ts) | Dates, weekends, timezone independence, region parsing, and the hold policy |
+| [`validator.test.ts`](scripts/test/validator.test.ts) | The real workflow validator on any ticket key, override, elapsed window, fail closed |
+| [`classifier.test.ts`](scripts/test/classifier.test.ts) | Model parsing, the rule fallback, and its score on `src/data/ticketTestSet.json` |
+| [`extraction.test.ts`](scripts/test/extraction.test.ts) | Verbatim-clause checking, invented clauses, errors, and the scoring |
+| [`rovo.test.ts`](scripts/test/rovo.test.ts) | The three Rovo tools and the privacy request |
+| [`seed.test.ts`](scripts/test/seed.test.ts) | Writing and re-writing the Confluence pages, and reading them back |
 
-These measure the rules and the data, not the Forge LLM. Running the same answer key against the live model is the next thing to add.
+The tests load [`helpers.ts`](scripts/test/helpers.ts) first, which swaps `@forge/kvs`, `@forge/api` and `@forge/llm` for in-memory fakes. The code under test is the real code, unmodified. They do not measure the live model: for that, use the **Evaluation** tab.
 
 Related docs: [docs/FORGE.md](docs/FORGE.md) (every module, scope and API), [docs/STORAGE_DECISION.md](docs/STORAGE_DECISION.md), [docs/COSTS.md](docs/COSTS.md), [docs/DEVPOST.md](docs/DEVPOST.md), [docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md).
 

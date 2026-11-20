@@ -12,6 +12,8 @@ export interface DPA {
   locationRestriction: string;
   exactClause: string;
   status: DpaStatus;
+  confluencePageId?: string | null;
+  resolvedByCounsel?: boolean;
 }
 
 export interface Vendor {
@@ -32,15 +34,36 @@ export interface AdminState {
   vendors: Vendor[];
 }
 
-export interface Benchmark {
-  totalContracts: number;
-  noticePeriodAccuracy: string;
-  unitAccuracy: string;
-  terminationRecall: string;
-  locationLimitRecall: string;
-  zeroHallucinationRate: string;
-  unclearHandling: string;
-  overallStatus: string;
+export interface SeedLog { stage: string; status: string; message: string }
+
+export interface ExtractionCheck {
+  extracted: {
+    noticePeriodDays: number | null;
+    noticeUnit: NoticeUnit;
+    objectionWindowDays: number | null;
+    remedy: string;
+    locationRestriction: string;
+    exactClause: string;
+    clauseVerified: boolean;
+    unclear: boolean;
+  };
+  matches: { notice: boolean; unit: boolean; remedy: boolean; location: boolean };
 }
 
-export interface SeedLog { stage: string; message: string }
+/** One contract's score from the evaluation run. Error rows carry only `error`. */
+export interface ScoreRow {
+  id: string;
+  customerName: string;
+  error?: string;
+  noticeOk?: boolean;
+  unitOk?: boolean;
+  terminationOk?: boolean;
+  locationOk?: boolean;
+  unclearOk?: boolean;
+  clauseVerbatim?: boolean;
+  confidentlyWrong?: boolean;
+  expected?: { days: number | null; unit: string; termination: boolean; euUkOnly: boolean };
+  got?: { days: number | null; unit: string; termination: boolean; euUkOnly: boolean; unclear: boolean };
+}
+
+export interface EvalBatch { rows: ScoreRow[]; total: number; nextOffset: number; done: boolean }

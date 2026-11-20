@@ -9,6 +9,12 @@ export interface IssueAssessment {
   locationConflictsCount?: number;
   conflictingCustomers?: string[];
   earliestGoLiveDate?: string;
+  noticeStartedAt?: string;
+  holdApplies?: boolean;
+  holdActive?: boolean;
+  failClosedReason?: string;
+  hostingRegion?: 'EU_UK' | 'OUTSIDE_EU_UK' | 'UNKNOWN';
+  basis?: { total: number; confirmed: number; pending: number; unclear: number };
   legalRequestKey?: string;
   draftNotice?: { subject: string; body: string } | null;
   aiReason?: string;

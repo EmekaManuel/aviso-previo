@@ -1,131 +1,93 @@
-import { kvs } from '@forge/kvs';
-import { CUSTOMER_DPAS, PUBLISHED_VENDORS } from '../data/seedData';
-import { calculateEarliestGoLive } from '../engine/dateCalculator';
-import { createOrFetchLegalRequest, generateDraftCustomerNotice } from '../legal/legalRequest';
+import { evaluateHold, parseHostingRegion } from '../engine/holdPolicy';
+import { createOrFetchLegalRequest } from '../legal/legalRequest';
+import { loadRegister, loadVendors } from '../storage/register';
+import type { HostingRegion } from '../types';
+import type { TicketClassification } from '../classification/ticketClassifier';
 
 export interface ActionPayload {
   inputs?: Record<string, any>;
   [key: string]: any;
 }
 
-/**
- * Helper to extract inputs regardless of whether payload has .inputs or direct properties
- */
+const DISCLAIMER = 'Aviso Previo summarizes your contracts. It is not legal advice.';
+const fail = (error: string) => ({ success: false, error, disclaimer: DISCLAIMER });
+
+/** Inputs may arrive as `payload.inputs` or directly on the payload. */
 function getInputs(payload: ActionPayload): Record<string, any> {
-  return payload.inputs || payload || {};
+  return payload?.inputs || payload || {};
 }
 
 /**
  * Action 1: check-subprocessor-commitments
- * Checks vendor against customer DPAs, returns earliest go-live date, affected counts, and location conflicts.
+ * "What would adding this vendor commit us to?" Reads the same register the app
+ * uses; only counsel-confirmed terms count. The date is a what-if from today.
  */
-export async function checkSubprocessorAction(payload: ActionPayload, context?: any) {
+export async function checkSubprocessorAction(payload: ActionPayload, _context?: any) {
   const inputs = getInputs(payload);
-  const vendorName = (inputs.vendor || '').trim();
-  const hostingLocation = (inputs.hostingLocation || 'United States').trim();
+  const vendorName = String(inputs.vendor || '').trim();
+  const hostingText = String(inputs.hostingLocation || '').trim();
+  if (!vendorName) return fail('Missing required input "vendor". Please provide a vendor name to check.');
 
-  if (!vendorName) {
-    return {
-      success: false,
-      error: 'Missing required input "vendor". Please provide a vendor name to check.',
-      disclaimer: 'Aviso Previo summarizes your contracts. It is not legal advice.',
-    };
+  const [terms, vendors] = await Promise.all([loadRegister(), loadVendors()]);
+  if (terms.length === 0) return fail('No customer contracts are loaded yet. Load and confirm the register in the Aviso Previo admin page first.');
+
+  const approved = vendors.find((v) => v.name.toLowerCase() === vendorName.toLowerCase());
+  const region: HostingRegion = parseHostingRegion(hostingText);
+
+  let classification: TicketClassification = 'NEW_SUBPROCESSOR';
+  if (approved) {
+    const wasInEu = parseHostingRegion(approved.hostingLocation) === 'EU_UK';
+    classification = region === 'OUTSIDE_EU_UK' && wasInEu ? 'LOCATION_CHANGE' : 'EXISTING_VENDOR_NO_CHANGE';
   }
 
-  // 1. Check if vendor is already on the approved published vendor register
-  const existingVendor = PUBLISHED_VENDORS.find(
-    (v) => v.name.toLowerCase() === vendorName.toLowerCase()
-  );
+  const now = new Date();
+  const hold = evaluateHold({ classification, hostingRegion: region, terms, noticeStartedAt: now, now });
+  const needsNotice = hold.applies;
 
-  const isExisting = !!existingVendor;
-
-  // 2. Fetch customer DPAs from KVS or fallback to seed
-  let dpas = CUSTOMER_DPAS;
-  try {
-    const storedDpaIds: string[] = (await kvs.get('dpas:list')) || [];
-    if (storedDpaIds.length > 0) {
-      const loaded = await Promise.all(
-        storedDpaIds.map(async (id) => (await kvs.get(`dpa:${id}`)) as any)
-      );
-      const valid = loaded.filter(Boolean);
-      if (valid.length > 0) {
-        dpas = valid;
-      }
-    }
-  } catch (err: any) {
-    console.warn('Error reading DPAs from KVS in Rovo action:', err.message);
-  }
-
-  // 3. Compute deterministic earliest go-live date
-  const calculation = calculateEarliestGoLive(dpas, new Date(), true);
-
-  // 4. Check location conflicts
-  const isOutsideEu = !hostingLocation.toLowerCase().includes('eu') &&
-    !hostingLocation.toLowerCase().includes('germany') &&
-    !hostingLocation.toLowerCase().includes('ireland') &&
-    !hostingLocation.toLowerCase().includes('eea') &&
-    !hostingLocation.toLowerCase().includes('europe');
-
-  const locationConflicts = isOutsideEu
-    ? dpas
-        .filter((d) => d.locationRestriction === 'EU_UK_ONLY')
-        .map((d) => `${d.customerName} (${d.country})`)
-    : [];
-
-  const terminationCustomers = dpas
-    .filter((d) => d.remedy === 'terminate')
-    .map((d) => `${d.customerName} (${d.country})`);
+  const advice = !needsNotice
+    ? `${approved?.name ?? vendorName} is an approved subprocessor and no hosting change was given, so no customer notice is triggered.`
+    : hold.failClosedReason
+      ? hold.failClosedReason
+      : classification === 'NEW_SUBPROCESSOR'
+        ? `${vendorName} is not on the approved subprocessor list. ${hold.affectedCustomers} confirmed customer DPA(s) require prior notice (longest: ${hold.longestNoticeDays} days), so it could not go live before ${hold.earliestGoLiveDate}.`
+        : `Moving ${approved?.name} outside the EU/UK is forbidden by ${hold.locationConflictsCount || hold.affectedCustomers} confirmed customer DPA(s).`;
 
   return {
     success: true,
     vendor: vendorName,
-    isApprovedVendor: isExisting,
-    status: isExisting ? 'APPROVED_VENDOR' : 'NEW_SUBPROCESSOR',
-    requiresPriorNotice: !isExisting,
-    totalCustomerDpas: dpas.length,
-    longestNoticeDays: calculation.longestNoticeDays,
-    earliestGoLiveDate: calculation.formattedDate,
-    terminationRemediesCount: terminationCustomers.length,
-    customersWithTerminationRights: terminationCustomers,
-    locationConflictsCount: locationConflicts.length,
-    customersWithLocationConflicts: locationConflicts,
-    advice: isExisting
-      ? `${vendorName} is an approved subprocessor on Ayo Payroll's published register. Routine upgrades do not require customer prior notice unless personal data categories or hosting regions change.`
-      : `${vendorName} is NOT on the approved subprocessor register. 41 customer DPAs require prior notice (longest: ${calculation.longestNoticeDays} days). Deployment is locked until ${calculation.formattedDate}. ${locationConflicts.length} customers have EU data residency restrictions.`,
-    disclaimer: 'Aviso Previo summarizes your contracts. It is not legal advice.',
+    isApprovedVendor: Boolean(approved),
+    status: classification,
+    requiresPriorNotice: needsNotice,
+    totalCustomerDpas: hold.basis.total,
+    confirmedCustomerDpas: hold.basis.confirmed,
+    awaitingCounsel: hold.basis.pending + hold.basis.unclear,
+    affectedCustomerCount: hold.affectedCustomers,
+    longestNoticeDays: hold.longestNoticeDays,
+    earliestGoLiveDate: needsNotice && !hold.failClosedReason ? hold.earliestGoLiveDate : null,
+    terminationCustomers: hold.terminationCustomers,
+    locationConflictsCount: hold.locationConflictsCount,
+    customersWithLocationConflicts: hold.conflictingCustomers,
+    hostingRegionAssumed: region === 'UNKNOWN' ? 'Not given: treated as outside the EU/UK' : region,
+    advice,
+    disclaimer: DISCLAIMER,
   };
 }
 
 /**
  * Action 2: explain-customer-term
- * Explains exact verbatim clause quotes and commitments for a specific customer DPA.
+ * The verbatim clause and extracted terms for one customer's DPA.
  */
-export async function explainTermAction(payload: ActionPayload, context?: any) {
-  const inputs = getInputs(payload);
-  const customerQuery = (inputs.customerName || '').toLowerCase().trim();
+export async function explainTermAction(payload: ActionPayload, _context?: any) {
+  const query = String(getInputs(payload).customerName || '').toLowerCase().trim();
+  if (!query) return fail('Missing required input "customerName". Please specify a customer name or DPA ID.');
 
-  if (!customerQuery) {
-    return {
-      success: false,
-      error: 'Missing required input "customerName". Please specify a customer name or DPA ID.',
-      disclaimer: 'Aviso Previo summarizes your contracts. It is not legal advice.',
-    };
-  }
+  const terms = await loadRegister();
+  if (terms.length === 0) return fail('No customer contracts are loaded yet. Load the register in the Aviso Previo admin page first.');
 
-  const dpa = CUSTOMER_DPAS.find(
-    (d) =>
-      d.id.toLowerCase() === customerQuery ||
-      d.customerName.toLowerCase().includes(customerQuery)
-  );
+  const dpa = terms.find((d) => d.id.toLowerCase() === query || d.customerName.toLowerCase().includes(query));
+  if (!dpa) return fail(`No customer DPA found matching "${getInputs(payload).customerName}".`);
 
-  if (!dpa) {
-    return {
-      success: false,
-      error: `No customer DPA found matching "${inputs.customerName}". Known customers include Nordic Logistics AS, Caledonia Finance, Bavaria HealthTech GmbH, etc.`,
-      disclaimer: 'Aviso Previo summarizes your contracts. It is not legal advice.',
-    };
-  }
-
+  const unclear = dpa.noticeUnit === 'unclear' || dpa.noticePeriodDays === null;
   return {
     success: true,
     dpaId: dpa.id,
@@ -137,41 +99,40 @@ export async function explainTermAction(payload: ActionPayload, context?: any) {
     remedy: dpa.remedy,
     locationRestriction: dpa.locationRestriction,
     exactClauseQuote: dpa.exactClause,
-    status: dpa.expectedStatus || 'confirmed',
-    explanation: dpa.noticeUnit === 'unclear'
-      ? `Customer ${dpa.customerName} has contract language specifying "${dpa.exactClause}", which lacks an explicit number of days. Aviso Previo flags this as "unclear: counsel to decide".`
-      : `Customer ${dpa.customerName} requires ${dpa.noticePeriodDays} ${dpa.noticeUnit} prior notice before appointing any new subprocessor. Objection window: ${dpa.objectionWindowDays || 'unspecified'} days. Remedy: ${dpa.remedy}.${dpa.locationRestriction === 'EU_UK_ONLY' ? ' Customer mandates EU/UK data residency.' : ''}`,
-    disclaimer: 'Aviso Previo summarizes your contracts. It is not legal advice.',
+    status: dpa.status,
+    explanation: unclear
+      ? `The clause for ${dpa.customerName} gives no number of days ("${dpa.exactClause}"). Aviso Previo marks it "unclear: counsel to decide" and does not guess.`
+      : `${dpa.customerName} requires ${dpa.noticePeriodDays} ${dpa.noticeUnit.replace('_', ' ')} of prior notice before a new subprocessor. Objection window: ${dpa.objectionWindowDays ?? 'unspecified'} days. Remedy: ${dpa.remedy}.${dpa.locationRestriction === 'EU_UK_ONLY' ? ' Processing must stay in the EU/UK.' : ''}${dpa.status === 'confirmed' ? '' : ' These terms are not yet confirmed by counsel.'}`,
+    disclaimer: DISCLAIMER,
   };
 }
 
 /**
  * Action 3: open-privacy-notice-request
- * Opens a privacy notice request ticket and drafts customer notification text.
+ * Opens (or returns) the privacy request for a Jira issue, with a draft customer notice.
  */
-export async function openNoticeAction(payload: ActionPayload, context?: any) {
+export async function openNoticeAction(payload: ActionPayload, _context?: any) {
   const inputs = getInputs(payload);
-  const issueKey = (inputs.issueKey || 'ENG-142').trim().toUpperCase();
-  const vendor = (inputs.vendor || 'Glimpse').trim();
+  const issueKey = String(inputs.issueKey || '').trim().toUpperCase();
+  if (!issueKey) return fail('Missing required input "issueKey". Please give the Jira issue that introduces the change.');
 
-  const calc = calculateEarliestGoLive(CUSTOMER_DPAS, new Date(), true);
-  const legalDraft = await createOrFetchLegalRequest(issueKey, vendor, calc.formattedDate);
-
-  return {
-    success: true,
-    issueKey,
-    legalRequestKey: legalDraft.requestKey,
-    vendor: legalDraft.vendor,
-    earliestGoLiveDate: legalDraft.earliestGoLiveDate,
-    affectedCustomerCount: legalDraft.affectedCustomerCount,
-    longestNoticeDays: legalDraft.longestNoticeDays,
-    terminationCustomers: legalDraft.terminationCustomers,
-    locationConflictCustomers: legalDraft.locationConflictCustomers,
-    draftNoticeEmail: {
-      subject: legalDraft.draftEmailSubject,
-      body: legalDraft.draftEmailBody,
-    },
-    message: `Privacy notice request ${legalDraft.requestKey} created/linked to ${issueKey}. Draft notice text prepared for counsel review.`,
-    disclaimer: 'Aviso Previo summarizes your contracts. It is not legal advice.',
-  };
+  try {
+    const draft = await createOrFetchLegalRequest(issueKey);
+    return {
+      success: true,
+      issueKey,
+      legalRequestKey: draft.requestKey,
+      vendor: draft.vendor,
+      earliestGoLiveDate: draft.earliestGoLiveDate,
+      affectedCustomerCount: draft.affectedCustomerCount,
+      longestNoticeDays: draft.longestNoticeDays,
+      terminationCustomers: draft.terminationCustomers,
+      locationConflictCustomers: draft.locationConflictCustomers,
+      draftNoticeEmail: { subject: draft.draftEmailSubject, body: draft.draftEmailBody },
+      message: `Privacy notice request ${draft.requestKey} is linked to ${issueKey}. The draft notice is ready for counsel review.`,
+      disclaimer: DISCLAIMER,
+    };
+  } catch (err: any) {
+    return fail(err?.message || 'Could not open the privacy request.');
+  }
 }

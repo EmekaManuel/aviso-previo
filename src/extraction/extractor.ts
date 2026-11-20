@@ -1,4 +1,5 @@
 import { chat } from '@forge/llm';
+import { containsClause } from './text';
 
 export interface ExtractedDPATerms {
   customerId: string;
@@ -12,6 +13,10 @@ export interface ExtractedDPATerms {
   exactClause: string;
   isUnclear: boolean;
   unclearReason?: string;
+  /** The quoted clause was found word for word in the contract text. */
+  clauseVerified: boolean;
+  /** Set when the model call failed; the terms are then not a reading of the contract. */
+  error?: string;
   inputTokens: number;
   outputTokens: number;
 }
@@ -78,11 +83,9 @@ ${contractText}
 
     const parsed = JSON.parse(jsonMatch[0]);
 
-    // Self-verification: ensure exactClause is found in the contract text
-    const exactClause = (parsed.exactClause || '').trim();
-    const clauseVerified =
-      exactClause.length > 10 &&
-      contractText.toLowerCase().includes(exactClause.toLowerCase().slice(0, 40));
+    // Self-verification: the quoted clause must appear word for word in the contract.
+    const quoted = String(parsed.exactClause || '').trim();
+    const clauseVerified = containsClause(contractText, quoted);
 
     return {
       customerId,
@@ -93,7 +96,8 @@ ${contractText}
       remedy: parsed.remedy || 'unspecified',
       noticeMethod: parsed.noticeMethod || 'unspecified',
       locationRestriction: parsed.locationRestriction || 'NONE',
-      exactClause: clauseVerified ? exactClause : exactClause || 'Clause excerpt requires review',
+      exactClause: clauseVerified ? quoted : '',
+      clauseVerified,
       isUnclear: Boolean(parsed.isUnclear || parsed.noticePeriodDays === null),
       unclearReason: parsed.unclearReason || (parsed.isUnclear ? 'Indefinite notice period' : undefined),
       inputTokens: response.usage?.input_tokens || 450,
@@ -101,7 +105,7 @@ ${contractText}
     };
   } catch (err: any) {
     console.error(`Extraction failure for ${customerId}:`, err);
-    // Deterministic fallback for rule adherence: record as unclear for human review
+    // The model could not be used: report it as an error and as unclear, never as a reading.
     return {
       customerId,
       customerName,
@@ -111,7 +115,9 @@ ${contractText}
       remedy: 'unspecified',
       noticeMethod: 'unspecified',
       locationRestriction: 'NONE',
-      exactClause: 'Extraction error — counsel review required.',
+      exactClause: '',
+      clauseVerified: false,
+      error: err.message || 'Extraction failed',
       isUnclear: true,
       unclearReason: `Automated extraction error: ${err.message}`,
       inputTokens: 0,

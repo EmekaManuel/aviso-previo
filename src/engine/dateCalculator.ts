@@ -1,4 +1,17 @@
-import { CUSTOMER_DPAS, DPATermSeed } from '../data/seedData';
+/**
+ * Notice-date arithmetic. Pure and timezone-independent (UTC): same inputs,
+ * same date. The model never touches any of this.
+ */
+
+/** The part of a DPA term the date engine needs. */
+export interface NoticeTerm {
+  customerName: string;
+  country: string;
+  noticePeriodDays: number | null;
+  noticeUnit: 'calendar_days' | 'business_days' | 'unclear';
+  remedy: string;
+  locationRestriction: string;
+}
 
 export interface DateCalculationResult {
   earliestGoLiveDate: Date;
@@ -16,109 +29,81 @@ export interface DateCalculationResult {
   };
 }
 
-/**
- * Adds business days (excluding Saturdays and Sundays) to a start date.
- */
+/** Adds business days (Saturdays and Sundays skipped). */
 export function addBusinessDays(startDate: Date, days: number): Date {
   const result = new Date(startDate.getTime());
   let added = 0;
   while (added < days) {
-    result.setDate(result.getDate() + 1);
-    const dayOfWeek = result.getDay();
-    // 0 is Sunday, 6 is Saturday
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      added++;
-    }
+    result.setUTCDate(result.getUTCDate() + 1);
+    const day = result.getUTCDay(); // 0 Sunday, 6 Saturday
+    if (day !== 0 && day !== 6) added++;
   }
   return result;
 }
 
-/**
- * Adds calendar days to a start date.
- */
 export function addCalendarDays(startDate: Date, days: number): Date {
   const result = new Date(startDate.getTime());
-  result.setDate(result.getDate() + days);
+  result.setUTCDate(result.getUTCDate() + days);
   return result;
 }
 
-/**
- * Formats a Date into standard plain copy (e.g., "19 January 2027").
- */
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+/** "19 January 2027" */
 export function formatNoticeDate(date: Date): string {
-  const months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
-  const day = date.getDate();
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  return `${day} ${month} ${year}`;
+  return `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`;
 }
 
 /**
- * Deterministically computes earliest permitted go-live date across all applicable customer DPAs.
+ * Earliest permitted go-live across the given terms: the longest notice wins.
+ * Terms with no stated period are counted as `unclear` and never guessed.
  *
- * Ground Rules:
- * - Dates are computed in code, never by the model.
- * - Business days are respected where the contract explicitly states business days.
- * - Longest notice period dictates the release hold date.
+ * @param vendorStoresOutsideEuUk whether the vendor processes outside the EU/UK
+ *        (decides which EU/UK-only customers are reported as conflicts).
  */
 export function calculateEarliestGoLive(
-  dpas: DPATermSeed[] = CUSTOMER_DPAS,
-  startDate: Date = new Date('2026-11-20T00:00:00Z'),
-  vendorStoresInUS: boolean = true
+  terms: NoticeTerm[],
+  startDate: Date,
+  vendorStoresOutsideEuUk: boolean
 ): DateCalculationResult {
   let maxUnlockDate = new Date(startDate.getTime());
   let longestDays = 0;
   let longestCustomer = '';
   let businessDaysApplied = false;
 
-  const terminationCustomers: string[] = [];
-  const locationConflictCustomers: string[] = [];
+  const termination: string[] = [];
+  const locationConflicts: string[] = [];
+  const breakdown = { thirtyCalendarDays: 0, sixtyCalendarDays: 0, thirtyBusinessDays: 0, unclear: 0 };
 
-  const breakdown = {
-    thirtyCalendarDays: 0,
-    sixtyCalendarDays: 0,
-    thirtyBusinessDays: 0,
-    unclear: 0,
-  };
-
-  for (const dpa of dpas) {
-    // Record termination rights
-    if (dpa.remedy === 'terminate') {
-      terminationCustomers.push(`${dpa.customerName} (${dpa.country})`);
+  for (const t of terms) {
+    if (t.remedy === 'terminate') termination.push(`${t.customerName} (${t.country})`);
+    if (vendorStoresOutsideEuUk && t.locationRestriction === 'EU_UK_ONLY') {
+      locationConflicts.push(`${t.customerName} (${t.country})`);
     }
 
-    // Record location conflicts
-    if (vendorStoresInUS && dpa.locationRestriction === 'EU_UK_ONLY') {
-      locationConflictCustomers.push(`${dpa.customerName} (${dpa.country})`);
-    }
-
-    // Skip unclear/vague periods from numeric calculation (recorded for human counsel review)
-    if (dpa.noticeUnit === 'unclear' || dpa.noticePeriodDays === null) {
+    if (t.noticeUnit === 'unclear' || t.noticePeriodDays === null) {
       breakdown.unclear++;
       continue;
     }
 
-    let customerUnlockDate: Date;
-    if (dpa.noticeUnit === 'business_days') {
+    let unlock: Date;
+    if (t.noticeUnit === 'business_days') {
       breakdown.thirtyBusinessDays++;
-      customerUnlockDate = addBusinessDays(startDate, dpa.noticePeriodDays);
+      unlock = addBusinessDays(startDate, t.noticePeriodDays);
       businessDaysApplied = true;
     } else {
-      if (dpa.noticePeriodDays === 60) {
-        breakdown.sixtyCalendarDays++;
-      } else {
-        breakdown.thirtyCalendarDays++;
-      }
-      customerUnlockDate = addCalendarDays(startDate, dpa.noticePeriodDays);
+      if (t.noticePeriodDays === 60) breakdown.sixtyCalendarDays++;
+      else breakdown.thirtyCalendarDays++;
+      unlock = addCalendarDays(startDate, t.noticePeriodDays);
     }
 
-    if (customerUnlockDate > maxUnlockDate) {
-      maxUnlockDate = customerUnlockDate;
-      longestDays = dpa.noticePeriodDays;
-      longestCustomer = dpa.customerName;
+    if (unlock > maxUnlockDate) {
+      maxUnlockDate = unlock;
+      longestDays = t.noticePeriodDays;
+      longestCustomer = t.customerName;
     }
   }
 
@@ -128,9 +113,8 @@ export function calculateEarliestGoLive(
     longestNoticeDays: longestDays,
     longestNoticeCustomer: longestCustomer,
     businessDaysApplied,
-    customersWithTermination: terminationCustomers,
-    customersWithLocationConflicts: locationConflictCustomers,
+    customersWithTermination: termination,
+    customersWithLocationConflicts: locationConflicts,
     noticeBreakdown: breakdown,
   };
 }
-

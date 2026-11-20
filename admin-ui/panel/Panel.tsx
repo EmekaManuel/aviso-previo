@@ -2,9 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { api } from './api';
 import type { IssueAssessment } from './types';
 
-const CLAUSE_FALLBACK =
-  'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.';
-
 const Foot = () => <p className="foot">Sample data · Fictional. Aviso Previo summarizes your contracts. It is not legal advice.</p>;
 
 export default function Panel() {
@@ -15,6 +12,7 @@ export default function Panel() {
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [note, setNote] = useState('');
 
   useEffect(() => { api.getAssessment().then(setA).catch(() => setError(true)); }, []);
 
@@ -27,8 +25,10 @@ export default function Panel() {
   const requestNotice = async () => {
     setBusy(true);
     try {
-      const r = await api.createRequest({ issueKey: a.issueKey, vendor, earliestDate: goLive });
+      const r = await api.createRequest({ issueKey: a.issueKey });
       if (r?.requestKey) setA({ ...a, legalRequestKey: r.requestKey });
+    } catch (e: any) {
+      setNote(e?.message || 'Could not open the request.');
     } finally { setBusy(false); }
   };
   const applyOverride = async () => {
@@ -39,6 +39,8 @@ export default function Panel() {
       await api.override({ issueKey: a.issueKey, overrideReason: text });
       setA({ ...a, overridden: true, overriddenBy: 'Counsel', overrideReason: text });
       setOverriding(false);
+    } catch (e: any) {
+      setNote(e?.message || 'Could not record the override.');
     } finally { setBusy(false); }
   };
 
@@ -74,7 +76,29 @@ export default function Panel() {
     );
   }
 
-  const holdPill = a.overridden ? <span className="pill warn">Hold overridden</span> : <span className="pill risk">Release hold</span>;
+  // The register cannot be trusted yet: the release stays blocked.
+  if (a.failClosedReason && !a.overridden) {
+    return (
+      <div className="panel">
+        <div className="section">
+          <span className="pill risk">Release hold</span>
+          <h2>Contract terms are not verified yet</h2>
+          <p className="muted">{a.failClosedReason} Ask privacy counsel to review and confirm the register in Aviso Previo Admin.</p>
+        </div>
+        <Foot />
+      </div>
+    );
+  }
+
+  const open = a.holdActive !== false;
+  const awaiting = (a.basis?.pending ?? 0) + (a.basis?.unclear ?? 0);
+  const basisNote = a.basis ? (
+    <p className="caption">
+      Based on {a.basis.confirmed} counsel-confirmed contract{a.basis.confirmed === 1 ? '' : 's'}
+      {awaiting > 0 ? `. ${awaiting} more ${awaiting === 1 ? 'is' : 'are'} awaiting counsel review, so this date may move later.` : '.'}
+    </p>
+  ) : null;
+  const holdPill = a.overridden ? <span className="pill warn">Hold overridden</span> : open ? <span className="pill risk">Release hold</span> : <span className="pill ok">{a.classification === 'LOCATION_CHANGE' && !a.affectedCustomers ? 'No restricted customers' : 'Notice window elapsed'}</span>;
 
   // ── Region change ─────────────────────────────
   if (a.classification === 'LOCATION_CHANGE') {
@@ -84,12 +108,19 @@ export default function Panel() {
         <div className="section">
           {holdPill}
           <h2>{vendor} is moving data processing out of the EU</h2>
-          <p className="muted">{who.length || 'Some'} customer DPAs forbid processing outside the EU/UK, so this change needs their agreement first.</p>
+          <p className="muted">
+            {who.length
+              ? `${who.length} customer DPA${who.length === 1 ? '' : 's'} forbid processing outside the EU/UK, so this change needs their agreement first.`
+              : 'No confirmed customer contract restricts where this data is processed.'}
+          </p>
         </div>
-        <div className="golive">
-          <span className="kicker">Earliest permitted go-live</span>
-          <span className="date">{goLive}</span>
-        </div>
+        {who.length > 0 && (
+          <div className="golive">
+            <span className="kicker">Earliest permitted go-live</span>
+            <span className="date">{goLive}</span>
+            {basisNote}
+          </div>
+        )}
         {who.length > 0 && (
           <div className="section">
             <span className="kicker">Customers affected</span>
@@ -103,23 +134,28 @@ export default function Panel() {
 
   // ── New subprocessor ──────────────────────────
   const stats: [string, string | number, string?][] = [
-    ['Customers affected', a.affectedCustomers ?? 41, 'signed DPAs'],
-    ['Longest notice', `${a.longestNoticeDays ?? 60} days`],
-    ['Termination rights', a.terminationRightsCount ?? 2, 'may object and leave'],
-    ['Region conflicts', a.locationConflictsCount ?? 3, 'EU/UK-only DPAs'],
+    ['Customers affected', a.affectedCustomers ?? 0, 'confirmed DPAs'],
+    ['Longest notice', `${a.longestNoticeDays ?? 0} days`],
+    ['Termination rights', a.terminationRightsCount ?? 0, 'may object and leave'],
+    ['Region conflicts', a.locationConflictsCount ?? 0, a.hostingRegion === 'UNKNOWN' ? 'region not stated; assumed outside EU/UK' : 'EU/UK-only DPAs'],
   ];
   return (
     <div className="panel">
       <div className="section">
         {holdPill}
         <h2>New subprocessor: {vendor}</h2>
-        <p className="muted">Customers must be notified before {vendor} can process their data. The workflow blocks the move to Done until then.</p>
+        <p className="muted">
+          {open && !a.overridden
+            ? `Customers must be notified before ${vendor} can process their data. The workflow blocks the move to Done until then.`
+            : a.overridden ? 'Counsel has released this ticket despite the notice window.' : 'The longest customer notice period has passed.'}
+        </p>
       </div>
 
       <div className="golive">
         <span className="kicker">Earliest permitted go-live</span>
         <span className="date">{goLive}</span>
-        <p className="caption">Calculated from the longest notice window in your signed contracts. Code changes cannot move it.</p>
+        <p className="caption">Counted from {a.noticeStartedAt ? new Date(a.noticeStartedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'first assessment'}, using the longest notice window. Code changes cannot move it.</p>
+        {basisNote}
         <div className="actions" style={{ alignItems: 'center' }}>
           {a.legalRequestKey ? (
             <span className="row" style={{ gap: 8 }}><span className="muted">Privacy request</span><span className="chipkey">{a.legalRequestKey}</span></span>
@@ -135,10 +171,12 @@ export default function Panel() {
         ))}
       </dl>
 
-      <div className="section">
-        <span className="kicker">Binding clause · {a.sampleClauseCustomer || 'Nordic Logistics AS'}</span>
-        <blockquote className="clause" style={{ margin: 0 }}>{a.sampleClauseQuote || CLAUSE_FALLBACK}</blockquote>
-      </div>
+      {a.sampleClauseQuote && (
+        <div className="section">
+          <span className="kicker">Binding clause · {a.sampleClauseCustomer}</span>
+          <blockquote className="clause" style={{ margin: 0 }}>{a.sampleClauseQuote}</blockquote>
+        </div>
+      )}
 
       <div className="section">
         <div className="actions">
@@ -148,9 +186,9 @@ export default function Panel() {
 
         {draft && (
           <div className="draft">
-            <div><span className="kicker">Subject</span><p style={{ marginTop: 4, fontWeight: 600 }}>{a.draftNotice?.subject || 'Notice of new subprocessor appointment · Ayo Payroll'}</p></div>
+            <div><span className="kicker">Subject</span><p style={{ marginTop: 4, fontWeight: 600 }}>{a.draftNotice?.subject}</p></div>
             <div><span className="kicker">Body</span>
-              <pre style={{ marginTop: 4 }}>{a.draftNotice?.body || `Dear Customer,\n\nPursuant to your Data Processing Agreement, this is prior written notice that Ayo Payroll Ltd intends to appoint ${vendor} as a subprocessor.\n\n  Purpose: ${a.purpose || 'Session replay for payslip debugging'}\n  Earliest deployment: ${goLive}\n\nPlease contact privacy@ayopayroll.com with any questions before that date.`}</pre>
+              <pre style={{ marginTop: 4 }}>{a.draftNotice?.body}</pre>
             </div>
           </div>
         )}
@@ -173,6 +211,7 @@ export default function Panel() {
           </div>
         )}
       </div>
+      {note && <p className="caption" role="alert">{note}</p>}
       <Foot />
     </div>
   );

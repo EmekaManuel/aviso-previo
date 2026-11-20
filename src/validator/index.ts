@@ -1,27 +1,11 @@
-import api, { route } from '@forge/api';
-import { kvs } from '@forge/kvs';
+import { assessIssue, IssueAssessment } from '../assessment/assessIssue';
 
 export interface ValidatorPayload {
-  issue: {
-    id?: string;
-    key: string;
-    fields?: {
-      summary?: string;
-      status?: {
-        name: string;
-      };
-    };
-  };
+  issue: { id?: string; key: string; fields?: { summary?: string; status?: { name: string } } };
   transition?: {
     id?: string;
     name?: string;
-    to?: {
-      id?: string;
-      name?: string;
-      statusCategory?: {
-        key?: string;
-      };
-    };
+    to?: { id?: string; name?: string; statusCategory?: { key?: string } };
   };
 }
 
@@ -30,95 +14,54 @@ export interface ValidatorResult {
   errorMessage?: string;
 }
 
+/** Statuses that put code in front of customers. Moving work along earlier is always allowed. */
+const RELEASE_STATUS = /\b(done|deployed|deploy|released?|production|live|closed|resolved)\b/i;
+
+export function isReleaseTransition(payload: ValidatorPayload): boolean {
+  const t = payload.transition;
+  if (!t) return true; // unknown: treat as a release, so we fail closed
+  if (t.to?.statusCategory?.key === 'done') return true;
+  return RELEASE_STATUS.test(`${t.to?.name ?? ''} ${t.name ?? ''}`);
+}
+
+export function holdMessage(a: IssueAssessment): string {
+  const note =
+    a.basis.pending + a.basis.unclear > 0
+      ? ` ${a.basis.pending + a.basis.unclear} contract(s) are still awaiting counsel review, so the date may move later.`
+      : '';
+  if (a.failClosedReason) {
+    return `Aviso Previo release hold: ${a.issueKey} cannot be released yet. ${a.failClosedReason}`;
+  }
+  const what =
+    a.classification === 'NEW_SUBPROCESSOR'
+      ? `introduces new subprocessor "${a.vendor ?? 'unnamed vendor'}". ${a.affectedCustomers} customer DPA(s) require prior notice (longest: ${a.longestNoticeDays} days)`
+      : `moves subprocessor "${a.vendor ?? 'unnamed vendor'}" outside the EU/UK, which ${a.affectedCustomers} customer DPA(s) forbid`;
+  return `Aviso Previo release hold: ${a.issueKey} ${what}. Earliest permitted deployment: ${a.earliestGoLiveDate}.${note}${a.legalRequestKey ? ` Privacy request: ${a.legalRequestKey}.` : ''}`;
+}
+
 /**
- * Jira Workflow Validator: Subprocessor Notice Hold
- *
- * Blocks transitioning a Jira issue to "Deployed", "Done", or "Production" if the
- * ticket introduces a new subprocessor or location change and the required notice
- * window has not yet expired.
+ * Jira workflow validator. Blocks a release-type transition while the customer
+ * notice window for the ticket is open. Everything comes from the same
+ * assessment the issue panel shows: there are no ticket-specific branches.
+ * If the ticket cannot be assessed, the transition is blocked.
  */
 export async function validateTransition(payload: ValidatorPayload): Promise<ValidatorResult> {
   const issueKey = payload?.issue?.key || '';
-
-  // If transition information is provided, only allow non-release transitions (e.g. In Progress)
-  if (payload?.transition) {
-    const targetStatus = (payload.transition.to?.name || payload.transition.name || '').toLowerCase();
-    const isNonRelease = targetStatus === 'in progress' || targetStatus === 'to do' || targetStatus === 'under review';
-    if (isNonRelease) {
-      return { result: true };
-    }
-  }
+  if (!isReleaseTransition(payload)) return { result: true };
 
   try {
-    // 1. Point-lookup cached decision from KVS
-    const decision: any = await kvs.get(`decision:${issueKey}`);
-
-    // If human override recorded by legal counsel, allow release
-    if (decision?.overridden) {
-      console.log(`[Aviso Previo] Transition permitted via override on ${issueKey}: ${decision.overrideReason}`);
+    const a = await assessIssue(issueKey);
+    if (a.overridden) {
+      console.log(`[Aviso Previo] ${issueKey} released by counsel override: ${a.overrideReason}`);
       return { result: true };
     }
-
-    // 2. Immediate check for Glimpse subprocessor tickets (ENG-2 or ENG-142)
-    let isGlimpse = issueKey === 'ENG-2' || issueKey === 'ENG-142';
-    if (!isGlimpse && !decision) {
-      try {
-        const issueRes = await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}?fields=summary`);
-        if (issueRes.ok) {
-          const data = await issueRes.json();
-          const summary = (data.fields?.summary || '').toLowerCase();
-          if (summary.includes('glimpse') || summary.includes('session replay')) {
-            isGlimpse = true;
-          }
-        }
-      } catch (err: any) {
-        console.warn(`Issue summary fetch in validator on ${issueKey}:`, err.message);
-      }
-    }
-
-    if (isGlimpse) {
-      return {
-        result: false,
-        errorMessage: `Aviso Previo Release Hold: Ticket ${issueKey} introduces new subprocessor "Glimpse". 41 customer DPAs require prior notice (longest: 60 days). Earliest permitted deployment: 19 January 2027. Legal request PRIV-18 must be cleared before deployment.`,
-      };
-    }
-
-    if (!decision) {
-      return { result: true };
-    }
-
-    // 3. Handle NEW_SUBPROCESSOR from KVS decision
-    if (decision.classification === 'NEW_SUBPROCESSOR') {
-      const unlockDate = new Date(decision.earliestGoLiveDate || '2027-01-19T00:00:00Z');
-      const now = new Date();
-
-      if (now < unlockDate) {
-        return {
-          result: false,
-          errorMessage: `Aviso Previo Release Hold: Ticket ${issueKey} introduces new subprocessor "${decision.vendor || 'third party'}". ${decision.affectedCustomers || 41} customer DPAs require prior notice (longest: ${decision.longestNoticeDays || 60} days). Earliest permitted deployment: ${decision.earliestGoLiveDate || '19 January 2027'}. Legal request ${decision.legalRequestKey || 'PRIV-18'} must clear before deployment.`,
-        };
-      }
-    }
-
-    // 4. Handle LOCATION_CHANGE from KVS decision
-    if (decision.classification === 'LOCATION_CHANGE' || issueKey === 'ENG-6') {
-      const unlockDate = new Date(decision?.earliestGoLiveDate || '2027-01-19T00:00:00Z');
-      const now = new Date();
-
-      if (now < unlockDate) {
-        return {
-          result: false,
-          errorMessage: `Aviso Previo Release Hold: Ticket ${issueKey} moves subprocessor "${decision?.vendor || 'RelayPost'}" to the US, violating location restrictions for 3 customer DPAs (Nordic Logistics AS, Bavaria HealthTech GmbH, Stockholm Retail Group AB). Earliest permitted deployment: ${decision?.earliestGoLiveDate || '19 January 2027'}.`,
-        };
-      }
-    }
-
+    if (a.holdApplies && a.holdActive) return { result: false, errorMessage: holdMessage(a) };
     return { result: true };
   } catch (error: any) {
     console.error(`Workflow validator error on ${issueKey}:`, error);
     return {
       result: false,
-      errorMessage: `Aviso Previo: Unable to verify subprocessor notice commitments on ${issueKey}.`,
+      errorMessage: `Aviso Previo: Unable to verify subprocessor notice commitments on ${issueKey}. ${error?.message ?? ''}`.trim(),
     };
   }
 }

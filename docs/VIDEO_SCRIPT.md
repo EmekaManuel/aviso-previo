@@ -53,13 +53,13 @@
   - Subject: `[Prior Notice] Notice of New Subprocessor Appointment — Ayo Payroll`
   - Body specifying Glimpse, purpose (session replay), hosting region (United States), and earliest deployment date.
 - Click **"Notify Privacy Counsel"**.
-- A lozenge appears: `Privacy Request: PRIV-18`.
-- Quick switch to Jira Service Management showing ticket `PRIV-18` in the legal queue with the full audit trail and drafted customer email ready to send.
+- A lozenge appears: `Privacy Request: the privacy request key shown in the panel`.
+- Quick switch to Jira Service Management showing ticket `the privacy request key shown in the panel` in the legal queue with the full audit trail and drafted customer email ready to send.
 
 **Voiceover**:
 > *"Instead of leaving engineers to guess how to notify legal, Aviso Previo drafts the customer notice email automatically. It specifies the vendor, purpose, hosting location, and opening date.*
 >
-> *With one click, we notify Privacy Counsel, automatically generating ticket PRIV-18 in the Legal Service Management desk. The notice window is officially initiated."*
+> *With one click, we notify Privacy Counsel, automatically generating ticket the privacy request key shown in the panel in the Legal Service Management desk. The notice window is officially initiated."*
 
 ---
 
@@ -69,7 +69,7 @@
 - The engineer attempts to drag or transition `ENG-142` to **Deployed** or **Done**.
 - The transition fails synchronously.
 - Jira displays the native validator error banner:
-  > *Aviso Previo Release Hold: Ticket ENG-142 introduces new subprocessor "Glimpse". 41 customer DPAs require prior notice (longest: 60 days). Earliest permitted deployment: 19 January 2027. Legal request PRIV-18 must clear before deployment.*
+  > *Aviso Previo Release Hold: Ticket ENG-142 introduces new subprocessor "Glimpse". 41 customer DPAs require prior notice (longest: 60 days). Earliest permitted deployment: 19 January 2027. Legal request the privacy request key shown in the panel must clear before deployment.*
 - Show the human override button in the panel: Counsel inputs an approved addendum exemption, and the hold unlocks.
 
 **Voiceover**:
@@ -117,8 +117,8 @@
 ### Scene 7: Architecture, Security & Conclusion (3:15 – 3:30)
 **Visual**:
 - Quick architecture slide showing:
-  - 100% Atlassian Perimeter Isolation (`@forge/llm`, `@forge/kvs`, `@forge/react`)
-  - 100% Extraction Accuracy Benchmark score (41/41)
+  - 100% Atlassian Perimeter Isolation (`@forge/llm`, `@forge/kvs`)
+  - Extraction evaluation figure from the in-app Evaluation tab (record it first; do not quote a number you have not run)
   - 0 Missed Subprocessors (96.7% classification)
 - Ending screen with the Aviso Previo logo and disclaimer:
   *"Aviso Previo summarizes your contracts. It is not legal advice."*
@@ -126,7 +126,7 @@
 **Voiceover**:
 > *"Best of all, Aviso Previo is built entirely on Atlassian Forge. With Forge LLM, your customer contracts and Jira tickets never leave Atlassian's secure cloud perimeter.*
 >
-> *In our benchmarks, Aviso Previo achieved 100% accuracy on contract extraction with zero hallucinations, and zero missed subprocessors.*
+> *We run the model over all 41 contracts and score every answer against the label, counting a confident wrong answer as a failure. Here is the result from this run.* (Use the live figures from the Evaluation tab.)
 >
 > *Aviso Previo: keeping enterprise engineering fast and enterprise contracts safe."*
 

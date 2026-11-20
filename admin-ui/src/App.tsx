@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { api } from './api';
-import type { AdminState, Benchmark, DPA } from './types';
+import { api, loadSample } from './api';
+import type { AdminState, DPA, ScoreRow } from './types';
 import { Overview } from './Overview';
 import { Register } from './Register';
 import { Vendors } from './Vendors';
@@ -19,7 +19,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [score, setScore] = useState<Benchmark | null>(null);
+  const [rows, setRows] = useState<ScoreRow[]>([]);
+  const [evalRunning, setEvalRunning] = useState(false);
+  const [evalFinished, setEvalFinished] = useState(false);
+  const [seedMsg, setSeedMsg] = useState('');
   const [toast, setToast] = useState('');
 
   const say = (m: string) => { setToast(m); window.setTimeout(() => setToast(''), 3200); };
@@ -36,6 +39,40 @@ export default function App() {
     try { await fn(); await load(); say(done); }
     catch (e: any) { say(e?.message || 'Something went wrong.'); }
     finally { setBusy(false); }
+  };
+
+  const seed = async () => {
+    setBusy(true);
+    try {
+      await loadSample(setSeedMsg);
+      await load();
+      say('Sample data loaded');
+    } catch (e: any) {
+      say(e?.message || 'Loading the sample failed.');
+    } finally {
+      setSeedMsg('');
+      setBusy(false);
+    }
+  };
+
+  const runEvaluation = async () => {
+    setRows([]);
+    setEvalFinished(false);
+    setEvalRunning(true);
+    try {
+      let offset = 0;
+      for (;;) {
+        const batch = await api.evalBatch(offset);
+        setRows((prev) => [...prev, ...batch.rows]);
+        if (batch.done) break;
+        offset = batch.nextOffset;
+      }
+      setEvalFinished(true);
+    } catch (e: any) {
+      say(e?.message || 'The evaluation stopped.');
+    } finally {
+      setEvalRunning(false);
+    }
   };
 
   const selected: DPA | undefined = data.dpas.find((d) => d.id === selectedId);
@@ -61,7 +98,7 @@ export default function App() {
         <div className="row bar-actions">
           <span className="pill plain">Sample data · Fictional</span>
           {data.dpaCount > 0 && (
-            <button className="btn" disabled={busy} onClick={() => run(api.seed, 'Sample data reloaded')}>Reload sample</button>
+            <button className="btn" disabled={busy} onClick={seed}>{seedMsg ? 'Loading…' : 'Reload sample'}</button>
           )}
         </div>
       </div>
@@ -73,7 +110,7 @@ export default function App() {
           <Overview
             data={data}
             busy={busy}
-            onSeed={() => run(api.seed, 'Sample data loaded')}
+            onSeed={seed}
             onConfirmAll={() => run(api.confirmAll, `${pending} contracts confirmed`)}
             onOpen={(d) => setSelectedId(d.id)}
             onGoRegister={() => setTab('register')}
@@ -83,12 +120,7 @@ export default function App() {
         ) : tab === 'vendors' ? (
           <Vendors vendors={data.vendors} />
         ) : (
-          <Evaluation
-            score={score}
-            total={data.dpaCount}
-            running={busy}
-            onRun={() => run(async () => setScore(await api.benchmark()), 'Evaluation complete')}
-          />
+          <Evaluation rows={rows} total={data.dpaCount} running={evalRunning} finished={evalFinished} onRun={runEvaluation} />
         )}
       </main>
 
@@ -103,9 +135,11 @@ export default function App() {
           busy={busy}
           onClose={() => setSelectedId(null)}
           onConfirm={(id) => run(() => api.confirm(id), 'Terms confirmed').then(() => setSelectedId(null))}
+          onResolve={(id, days, unit) => run(() => api.resolve(id, days, unit), 'Clause resolved and confirmed').then(() => setSelectedId(null))}
+          onApply={(id) => run(() => api.applyExtraction(id), 'Terms updated and sent back for review').then(() => setSelectedId(null))}
         />
       )}
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {(toast || seedMsg) && <div className="toast" role="status">{seedMsg || toast}</div>}
     </div>
   );
 }

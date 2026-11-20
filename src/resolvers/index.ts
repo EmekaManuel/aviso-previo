@@ -1,353 +1,200 @@
 import Resolver from '@forge/resolver';
-import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
-import { chat } from '@forge/llm';
-import { runFullAyoPayrollSeed } from '../seed/seedEngine';
-import { CUSTOMER_DPAS, PUBLISHED_VENDORS } from '../data/seedData';
-import { classifyTicket } from '../classification/ticketClassifier';
-import { createOrFetchLegalRequest, generateDraftCustomerNotice } from '../legal/legalRequest';
-import { calculateEarliestGoLive } from '../engine/dateCalculator';
+import { CUSTOMER_DPAS } from '../data/seedData';
+import { runSeedStep, SeedStep } from '../seed/seedEngine';
+import { assessIssue } from '../assessment/assessIssue';
+import { createOrFetchLegalRequest } from '../legal/legalRequest';
+import { loadRegister, loadVendors, saveDpa } from '../storage/register';
+import { getPageText } from '../confluence/pages';
+import { extractDPATerms, ExtractedDPATerms } from '../extraction/extractor';
+import { scoreContract } from '../evaluation/scoring';
+import type { DpaRecord } from '../types';
 
 const resolver = new Resolver();
 
-/**
- * Spike Status Resolver:
- * Verifies Forge LLM connectivity, Confluence page access, and KVS storage.
- */
-resolver.define('getSpikeStatus', async (req) => {
-  const result: {
-    confluenceStatus: {
-      status: 'success' | 'error' | 'idle';
-      sampleTitle?: string;
-      error?: string;
-    };
-    llmStatus: {
-      status: 'idle' | 'success';
-      model?: string;
-    };
-  } = {
-    confluenceStatus: { status: 'idle' },
-    llmStatus: { status: 'idle', model: 'claude' },
-  };
-
-  // 1. Verify Confluence read via asApp REST API v2
-  try {
-    const response = await api.asApp().requestConfluence(route`/wiki/api/v2/pages?limit=1`, {
-      headers: {
-        Accept: 'application/json',
-      },
-    });
-
-    if (response.ok) {
-      const pageData = await response.json();
-      const firstPage = pageData.results && pageData.results[0];
-      result.confluenceStatus = {
-        status: 'success',
-        sampleTitle: firstPage ? `Read: "${firstPage.title}"` : 'Connected (0 pages in space)',
-      };
-    } else {
-      result.confluenceStatus = {
-        status: 'error',
-        error: `Confluence API response: ${response.status}`,
-      };
-    }
-  } catch (err: any) {
-    result.confluenceStatus = {
-      status: 'error',
-      error: err.message || 'Unable to connect to Confluence REST API',
-    };
-  }
-
-  return result;
-});
+/** Who is acting. Forge supplies the account id; it is recorded with every counsel decision. */
+const actor = (req: any): string => (req?.context?.accountId ? `Counsel (${req.context.accountId})` : 'Counsel');
 
 /**
- * LLM Test Resolver:
- * Invokes native @forge/llm Claude model and returns token metrics.
- */
-resolver.define('testLLM', async (req) => {
-  try {
-    const prompt =
-      'You are Aviso Previo. In one short sentence, identify if the tool "Glimpse" is a new subprocessor for customer payroll data based on: "Add session replay to payslip screen using Glimpse".';
-
-    const response = await chat({
-      model: 'claude-sonnet-4-5-20250929',
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    });
-
-    const firstChoice = response.choices?.[0];
-    let content = '';
-    if (firstChoice?.message?.content) {
-      if (typeof firstChoice.message.content === 'string') {
-        content = firstChoice.message.content;
-      } else {
-        content = JSON.stringify(firstChoice.message.content);
-      }
-    } else {
-      content = 'No response content';
-    }
-
-    const inputTokens = response.usage?.input_tokens || 45;
-    const outputTokens = response.usage?.output_tokens || 22;
-
-    return {
-      success: true,
-      model: 'claude-haiku-4-5',
-      output: content,
-      inputTokens,
-      outputTokens,
-    };
-  } catch (error: any) {
-    console.error('Forge LLM Spike Error:', error);
-    return {
-      success: false,
-      output: `Forge LLM invocation attempted. (${error.message || 'Check site AI activation'})`,
-      model: 'claude-haiku-4-5',
-      inputTokens: 0,
-      outputTokens: 0,
-    };
-  }
-});
-
-/**
- * Dynamic Subprocessor Assessment for Issue Panel:
- * Evaluates the current issue key, reads stored decision from KVS,
- * or calls live classifier to determine subprocessor impact.
+ * Issue panel: the assessment for the ticket being viewed. The same function
+ * backs the workflow validator, so the panel and the release hold agree.
  */
 resolver.define('getIssueAssessment', async (req) => {
-  const { context } = req;
-  const issueKey = context.extension?.issue?.key || 'ENG-142';
-
-  // 1. Look up cached decision from KVS
-  const decision: any = await kvs.get(`decision:${issueKey}`);
-  if (decision) {
-    return {
-      ...decision,
-      issueKey,
-      sampleClauseCustomer: 'Nordic Logistics AS',
-      sampleClauseQuote:
-        'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.',
-    };
-  }
-
-  // 2. Fetch live issue details if available
-  let summary = '';
-  let description = '';
-  try {
-    const issueRes = await api.asApp().requestJira(route`/rest/api/3/issue/${issueKey}?fields=summary,description`);
-    if (issueRes.ok) {
-      const issueData = await issueRes.json();
-      summary = issueData.fields?.summary || '';
-      description =
-        typeof issueData.fields?.description === 'string'
-          ? issueData.fields.description
-          : JSON.stringify(issueData.fields?.description || '');
-    }
-  } catch (e: any) {
-    console.warn(`Could not fetch live issue ${issueKey}:`, e.message);
-  }
-
-  // Fallbacks if live issue details not found
-  if (!summary) {
-    if (issueKey === 'ENG-151') {
-      summary = 'Upgrade ErrorSentry SDK to v8';
-    } else if (issueKey === 'ENG-156') {
-      summary = 'Move RelayPost sending region from EU to US';
-    } else if (issueKey === 'ENG-160') {
-      summary = 'Evaluate Glimpse in sandbox with synthetic data only';
-    } else {
-      summary = 'Add session replay to payslip screen using Glimpse';
-    }
-  }
-
-  // 3. Classify ticket
-  const classificationResult = await classifyTicket(summary, description);
-
-  let earliestGoLiveDate = '';
-  let affectedCustomers = 0;
-  let longestNoticeDays = 0;
-  let terminationRightsCount = 0;
-  let locationConflictsCount = 0;
-
-  if (classificationResult.classification === 'NEW_SUBPROCESSOR') {
-    const calc = calculateEarliestGoLive(CUSTOMER_DPAS, new Date(), true);
-    earliestGoLiveDate = calc.formattedDate;
-    affectedCustomers = 41;
-    longestNoticeDays = calc.longestNoticeDays;
-    terminationRightsCount = calc.customersWithTermination.length;
-    locationConflictsCount = calc.customersWithLocationConflicts.length;
-  } else if (classificationResult.classification === 'LOCATION_CHANGE') {
-    const calc = calculateEarliestGoLive(CUSTOMER_DPAS, new Date(), true);
-    earliestGoLiveDate = calc.formattedDate;
-    affectedCustomers = 3;
-    longestNoticeDays = 60;
-    locationConflictsCount = 3;
-  }
-
-  const assessment = {
-    issueKey,
-    classification: classificationResult.classification,
-    vendor: classificationResult.vendor || 'Glimpse',
-    affectedCustomers,
-    longestNoticeDays,
-    terminationRightsCount,
-    locationConflictsCount,
-    earliestGoLiveDate,
-    legalRequestKey: classificationResult.classification === 'NEW_SUBPROCESSOR' ? 'PRIV-18' : undefined,
-    draftNotice: (classificationResult.classification === 'NEW_SUBPROCESSOR' || classificationResult.classification === 'LOCATION_CHANGE')
-      ? generateDraftCustomerNotice(
-          classificationResult.vendor || 'Glimpse',
-          summary,
-          'United States',
-          earliestGoLiveDate
-        )
-      : null,
-    aiReason: classificationResult.reasoning,
-    sampleClauseCustomer: 'Nordic Logistics AS',
-    sampleClauseQuote:
-      'Supplier shall give Customer at least 60 calendar days prior written notice of the appointment of any new Subprocessor. Customer may object within 30 days and terminate if reasonable resolution cannot be agreed.',
-  };
-
-  // Cache in KVS
-  await kvs.set(`decision:${issueKey}`, assessment);
-
-  return assessment;
+  const issueKey = req.context?.extension?.issue?.key;
+  if (!issueKey) throw new Error('This view is not on a Jira issue.');
+  return assessIssue(issueKey);
 });
 
-/**
- * Create or Fetch Legal JSM Request
- */
+/** Opens (or returns) the privacy request for the ticket. */
 resolver.define('createLegalNoticeRequest', async (req) => {
-  const { issueKey, vendor, earliestDate } = req.payload as {
-    issueKey: string;
-    vendor: string;
-    earliestDate: string;
-  };
-  return await createOrFetchLegalRequest(issueKey, vendor, earliestDate);
+  const { issueKey } = req.payload as { issueKey: string };
+  return createOrFetchLegalRequest(issueKey);
 });
 
-/**
- * Human Override Resolver
- */
+/** Counsel override of a release hold. The reason and who made it are recorded. */
 resolver.define('overrideIssueDecision', async (req) => {
   const { issueKey, overrideReason } = req.payload as { issueKey: string; overrideReason: string };
+  const reason = (overrideReason || '').trim();
+  if (!reason) throw new Error('An override needs a written reason.');
+  // Make sure the ticket has a stored decision before it is overridden.
+  await assessIssue(issueKey);
   const decision: any = (await kvs.get(`decision:${issueKey}`)) || {};
-
-  decision.overridden = true;
-  decision.overriddenBy = 'Counsel (Ayo Payroll)';
-  decision.overrideReason = overrideReason || 'Approved by legal.';
-  decision.overriddenAt = new Date().toISOString();
-
-  await kvs.set(`decision:${issueKey}`, decision);
-  return { success: true, decision };
-});
-
-/**
- * Admin Resolver: Seed Ayo Payroll sample data
- */
-resolver.define('seedAyoPayroll', async () => {
-  return await runFullAyoPayrollSeed();
-});
-
-/**
- * Admin Resolver: Get current DPA register state
- */
-resolver.define('getAdminState', async () => {
-  const dpaIds: string[] = (await kvs.get('dpas:list')) as string[] || [];
-  const vendorKeys: string[] = (await kvs.get('vendors:list')) as string[] || [];
-
-  let dpas: any[] = [];
-  let confirmedCount = 0;
-  let unclearCount = 0;
-
-  if (dpaIds.length > 0) {
-    for (const id of dpaIds) {
-      const term: any = await kvs.get(`dpa:${id}`);
-      if (term) {
-        dpas.push(term);
-        if (term.status === 'confirmed') confirmedCount++;
-        if (term.status === 'unclear' || term.noticeUnit === 'unclear') unclearCount++;
-      }
-    }
-  } else {
-    dpas = CUSTOMER_DPAS;
-    confirmedCount = 40;
-    unclearCount = 1;
-  }
-
-  let vendors: any[] = [];
-  if (vendorKeys.length > 0) {
-    for (const key of vendorKeys) {
-      const v: any = await kvs.get(`vendor:${key}`);
-      if (v) vendors.push(v);
-    }
-  } else {
-    vendors = PUBLISHED_VENDORS;
-  }
-
-  return {
-    dpaCount: dpas.length,
-    vendorCount: vendors.length,
-    confirmedCount,
-    unclearCount,
-    dpas,
-    vendors,
+  const updated = {
+    ...decision,
+    overridden: true,
+    overriddenBy: actor(req),
+    overrideReason: reason,
+    overriddenAt: new Date().toISOString(),
   };
+  await kvs.set(`decision:${issueKey}`, updated);
+  return { success: true, overriddenBy: updated.overriddenBy };
 });
 
-/**
- * Admin Resolver: Confirm single DPA
- */
+/** Admin: one step of loading the sample company (storage, Jira, then Confluence in batches). */
+resolver.define('seedStep', async (req) => {
+  const { step, offset } = req.payload as { step: SeedStep; offset?: number };
+  return runSeedStep(step, offset ?? 0);
+});
+
+/** Admin: the register as it stands. */
+resolver.define('getAdminState', async () => {
+  const [dpas, vendors] = await Promise.all([loadRegister(), loadVendors()]);
+  const confirmedCount = dpas.filter((d) => d.status === 'confirmed').length;
+  const unclearCount = dpas.filter((d) => d.status === 'unclear' || (d.status !== 'confirmed' && d.noticeUnit === 'unclear')).length;
+  return { dpaCount: dpas.length, vendorCount: vendors.length, confirmedCount, unclearCount, dpas, vendors };
+});
+
+/** Counsel confirms one contract's terms as read. */
 resolver.define('confirmDPA', async (req) => {
   const { dpaId } = req.payload as { dpaId: string };
-  const dpa: any = await kvs.get(`dpa:${dpaId}`);
-  if (dpa) {
-    dpa.status = 'confirmed';
-    dpa.confirmedAt = new Date().toISOString();
-    dpa.confirmedBy = 'Counsel (Ayo Payroll)';
-    await kvs.set(`dpa:${dpaId}`, dpa);
+  const dpa = (await kvs.get(`dpa:${dpaId}`)) as DpaRecord | undefined;
+  if (!dpa) throw new Error(`No contract ${dpaId}.`);
+  if (dpa.status === 'unclear' || dpa.noticeUnit === 'unclear') {
+    throw new Error('This clause is ambiguous. Resolve it with a notice period before confirming.');
   }
+  await saveDpa({ ...dpa, status: 'confirmed', confirmedAt: new Date().toISOString(), confirmedBy: actor(req) });
   return { success: true, dpaId };
 });
 
-/**
- * Admin Resolver: Confirm all eligible DPAs
- */
-resolver.define('confirmAllDPAs', async () => {
-  const dpaIds: string[] = (await kvs.get('dpas:list')) as string[] || [];
+/** Counsel confirms every contract that has a stated notice period. */
+resolver.define('confirmAllDPAs', async (req) => {
+  const dpas = await loadRegister();
   let confirmedCount = 0;
-  for (const id of dpaIds) {
-    const dpa: any = await kvs.get(`dpa:${id}`);
-    if (dpa && dpa.noticeUnit !== 'unclear' && dpa.status !== 'confirmed') {
-      dpa.status = 'confirmed';
-      dpa.confirmedAt = new Date().toISOString();
-      dpa.confirmedBy = 'Counsel (Ayo Payroll)';
-      await kvs.set(`dpa:${id}`, dpa);
+  for (const dpa of dpas) {
+    if (dpa.status !== 'confirmed' && dpa.noticeUnit !== 'unclear' && dpa.status !== 'unclear') {
+      await saveDpa({ ...dpa, status: 'confirmed', confirmedAt: new Date().toISOString(), confirmedBy: actor(req) });
       confirmedCount++;
     }
   }
   return { success: true, confirmedCount };
 });
 
-/**
- * Admin Resolver: Run Extraction Scoring Benchmark
- */
-resolver.define('getExtractionBenchmarkScore', async () => {
-  return {
-    totalContracts: 41,
-    noticePeriodAccuracy: '100.0%',
-    unitAccuracy: '100.0%',
-    terminationRecall: '100.0% (2/2)',
-    locationLimitRecall: '100.0% (3/3)',
-    zeroHallucinationRate: '100.0% (0 errors)',
-    unclearHandling: '100.0% (CUST-041 correctly marked as Unclear)',
-    overallStatus: 'PASS',
+/** Counsel decides an ambiguous clause by entering the notice period they read into it. */
+resolver.define('resolveDPA', async (req) => {
+  const { dpaId, noticePeriodDays, noticeUnit } = req.payload as {
+    dpaId: string;
+    noticePeriodDays: number;
+    noticeUnit: 'calendar_days' | 'business_days';
   };
+  const days = Math.round(Number(noticePeriodDays));
+  if (!Number.isFinite(days) || days < 1 || days > 365) throw new Error('Enter a notice period between 1 and 365 days.');
+  if (noticeUnit !== 'calendar_days' && noticeUnit !== 'business_days') throw new Error('Choose calendar or business days.');
+  const dpa = (await kvs.get(`dpa:${dpaId}`)) as DpaRecord | undefined;
+  if (!dpa) throw new Error(`No contract ${dpaId}.`);
+  await saveDpa({
+    ...dpa,
+    noticePeriodDays: days,
+    noticeUnit,
+    status: 'confirmed',
+    resolvedByCounsel: true,
+    confirmedAt: new Date().toISOString(),
+    confirmedBy: actor(req),
+  });
+  return { success: true, dpaId };
+});
+
+/** Reads one contract back from its Confluence page with the model and compares it with the register. */
+resolver.define('extractContract', async (req) => {
+  const { dpaId } = req.payload as { dpaId: string };
+  const dpa = (await kvs.get(`dpa:${dpaId}`)) as DpaRecord | undefined;
+  if (!dpa) throw new Error(`No contract ${dpaId}.`);
+  if (!dpa.confluencePageId) throw new Error('This contract has no Confluence page yet. Load the sample data again.');
+
+  const text = await getPageText(dpa.confluencePageId);
+  const extracted = await extractDPATerms(text, dpa.id, dpa.customerName);
+  if (extracted.error) throw new Error(`The model could not read this contract: ${extracted.error}`);
+
+  await kvs.set(`extract:${dpa.id}`, extracted);
+  const unclear = extracted.isUnclear || extracted.noticeUnit === 'unclear';
+  return {
+    extracted: {
+      noticePeriodDays: extracted.noticePeriodDays,
+      noticeUnit: extracted.noticeUnit,
+      objectionWindowDays: extracted.objectionWindowDays,
+      remedy: extracted.remedy,
+      locationRestriction: extracted.locationRestriction,
+      exactClause: extracted.exactClause,
+      clauseVerified: extracted.clauseVerified,
+      unclear,
+    },
+    matches: {
+      notice: unclear ? dpa.noticeUnit === 'unclear' : extracted.noticePeriodDays === dpa.noticePeriodDays,
+      unit: extracted.noticeUnit === dpa.noticeUnit,
+      remedy: extracted.remedy === dpa.remedy,
+      location: extracted.locationRestriction === dpa.locationRestriction,
+    },
+  };
+});
+
+/** Replaces the register's terms with what the model read, and puts them back in front of counsel. */
+resolver.define('applyExtraction', async (req) => {
+  const { dpaId } = req.payload as { dpaId: string };
+  const dpa = (await kvs.get(`dpa:${dpaId}`)) as DpaRecord | undefined;
+  const extracted = (await kvs.get(`extract:${dpaId}`)) as ExtractedDPATerms | undefined;
+  if (!dpa || !extracted) throw new Error('Check this contract against Confluence first.');
+  const unclear = extracted.isUnclear || extracted.noticeUnit === 'unclear';
+  await saveDpa({
+    ...dpa,
+    noticePeriodDays: unclear ? null : extracted.noticePeriodDays,
+    noticeUnit: unclear ? 'unclear' : extracted.noticeUnit,
+    objectionWindowDays: extracted.objectionWindowDays,
+    remedy: extracted.remedy,
+    locationRestriction: extracted.locationRestriction,
+    exactClause: extracted.clauseVerified ? extracted.exactClause : dpa.exactClause,
+    status: unclear ? 'unclear' : 'draft',
+    confirmedAt: null,
+    confirmedBy: null,
+    resolvedByCounsel: false,
+  });
+  return { success: true, status: unclear ? 'unclear' : 'draft' };
+});
+
+/**
+ * Evaluation: the model reads contracts from their Confluence pages and every
+ * answer is scored against the hand-written labels. The admin page calls this a
+ * few contracts at a time and adds the rows up.
+ */
+resolver.define('runExtractionEvaluation', async (req) => {
+  const { offset = 0, size = 4 } = (req.payload || {}) as { offset?: number; size?: number };
+  const batch = CUSTOMER_DPAS.slice(offset, offset + size);
+
+  const rows = await Promise.all(
+    batch.map(async (label) => {
+      const record = (await kvs.get(`dpa:${label.id}`)) as DpaRecord | undefined;
+      if (!record?.confluencePageId) {
+        return { id: label.id, customerName: label.customerName, error: 'No Confluence page. Load the sample data again.' };
+      }
+      try {
+        const text = await getPageText(record.confluencePageId);
+        const got = await extractDPATerms(text, label.id, label.customerName);
+        return scoreContract(label, got, text);
+      } catch (err: any) {
+        return { id: label.id, customerName: label.customerName, error: err.message || 'Failed' };
+      }
+    })
+  );
+
+  return { rows, total: CUSTOMER_DPAS.length, nextOffset: offset + batch.length, done: offset + batch.length >= CUSTOMER_DPAS.length };
 });
 
 export const handler = resolver.getDefinitions();

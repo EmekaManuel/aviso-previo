@@ -1,30 +1,13 @@
 import api, { route } from '@forge/api';
 import { kvs } from '@forge/kvs';
-import {
-  CUSTOMER_DPAS,
-  PUBLISHED_VENDORS,
-  SAMPLE_TICKETS,
-  DPATermSeed,
-  VendorSeed,
-  TicketSeed,
-} from '../data/seedData';
+import { CUSTOMER_DPAS, PUBLISHED_VENDORS, SAMPLE_TICKETS } from '../data/seedData';
+import { ensureSpace, upsertPage } from '../confluence/pages';
+import { buildContractHtml, contractTitle, SUBPROCESSOR_PAGE_TITLE } from './contractPage';
 
 export interface SeedProgressLog {
   stage: string;
   status: 'pending' | 'success' | 'skipped' | 'error';
   message: string;
-}
-
-export interface SeedResult {
-  success: boolean;
-  dpaCount: number;
-  vendorCount: number;
-  ticketCount: number;
-  confluenceSpaceKey?: string;
-  confluencePagesCreated: number;
-  jiraProjectKey?: string;
-  jiraIssuesCreated: number;
-  logs: SeedProgressLog[];
 }
 
 /**
@@ -51,11 +34,14 @@ export async function seedStorage(onProgress?: (log: SeedProgressLog) => void): 
   // 2. Seed 41 Customer DPAs
   const dpaIds: string[] = [];
   for (const dpa of CUSTOMER_DPAS) {
+    const { expectedStatus, isBuriedInDataTransfer, ...terms } = dpa;
+    const previous = (await kvs.get(`dpa:${dpa.id}`)) as any;
     await kvs.set(`dpa:${dpa.id}`, {
-      ...dpa,
-      status: dpa.expectedStatus,
-      confirmedAt: dpa.expectedStatus === 'confirmed' ? '2026-11-01T10:00:00Z' : null,
-      confirmedBy: dpa.expectedStatus === 'confirmed' ? 'Counsel (Ayo Payroll)' : null,
+      ...terms,
+      confluencePageId: previous?.confluencePageId ?? null,
+      status: expectedStatus,
+      confirmedAt: expectedStatus === 'confirmed' ? '2026-11-01T10:00:00Z' : null,
+      confirmedBy: expectedStatus === 'confirmed' ? 'Counsel (Ayo Payroll)' : null,
     });
     dpaIds.push(dpa.id);
   }
@@ -63,280 +49,57 @@ export async function seedStorage(onProgress?: (log: SeedProgressLog) => void): 
   onProgress?.({
     stage: 'Storage: DPAs',
     status: 'success',
-    message: `Seeded ${dpaIds.length} customer DPAs in KVS.`,
+    message: `Loaded ${dpaIds.length} customer DPAs into the register (sample terms, labelled by hand).`,
   });
 
-  // 3. Seed Planted Ticket Decisions
-  // ENG-142 / ENG-2: New subprocessor Glimpse -> Notice required for all 41 DPAs, longest 60 days, unlock 19 Jan 2027
-  const glimpseDecision = {
-    issueKey: 'ENG-2',
-    classification: 'NEW_SUBPROCESSOR',
-    vendor: 'Glimpse',
-    purpose: 'Session replay analytics for payslip view layout debugging',
-    vendorLocation: 'United States',
-    customerDataTouched: true,
-    affectedCustomers: 41,
-    longestNoticeDays: 60,
-    terminationRightsCount: 2,
-    locationConflictsCount: 3,
-    conflictingCustomers: [
-      'Nordic Logistics AS (Norway)',
-      'Bavaria HealthTech GmbH (Germany)',
-      'Stockholm Retail Group AB (Sweden)',
-    ],
-    earliestGoLiveDate: '2027-01-19',
-    legalRequestKey: 'PRIV-18',
-    aiReason:
-      'Glimpse is not on the published subprocessor list and will capture payslip DOM sessions containing personal payroll data. Vendor processes data in US.',
-  };
-  await kvs.set('decision:ENG-142', { ...glimpseDecision, issueKey: 'ENG-142' });
-  await kvs.set('decision:ENG-2', glimpseDecision);
-
-  // ENG-151 / ENG-4: Upgrade existing vendor ErrorSentry -> No change, no panel
-  const errorSentryDecision = {
-    issueKey: 'ENG-4',
-    classification: 'EXISTING_VENDOR_NO_CHANGE',
-    vendor: 'ErrorSentry',
-    purpose: 'Client-side error monitoring SDK upgrade to v8',
-    customerDataTouched: false,
-    affectedCustomers: 0,
-    longestNoticeDays: 0,
-    aiReason:
-      'ErrorSentry is already an approved subprocessor (published 2025-02-01). No change in hosting location (Frankfurt, EU) or data processing scope.',
-  };
-  await kvs.set('decision:ENG-151', { ...errorSentryDecision, issueKey: 'ENG-151' });
-  await kvs.set('decision:ENG-4', errorSentryDecision);
-
-  // ENG-156 / ENG-6: Move RelayPost sending region from EU to US -> Location change affecting 3 EU-only customers
-  const relayPostDecision = {
-    issueKey: 'ENG-6',
-    classification: 'LOCATION_CHANGE',
-    vendor: 'RelayPost',
-    purpose: 'Routing transactional emails via US warm-up IP pool',
-    customerDataTouched: true,
-    affectedCustomers: 3,
-    longestNoticeDays: 60,
-    terminationRightsCount: 1,
-    locationConflictsCount: 3,
-    conflictingCustomers: [
-      'Nordic Logistics AS (Norway)',
-      'Bavaria HealthTech GmbH (Germany)',
-      'Stockholm Retail Group AB (Sweden)',
-    ],
-    earliestGoLiveDate: '2027-01-19',
-    aiReason:
-      'RelayPost is an existing subprocessor, but relocating email processing infrastructure from Dublin (EU) to the US violates explicit territorial processing limits for 3 customer DPAs.',
-  };
-  await kvs.set('decision:ENG-156', { ...relayPostDecision, issueKey: 'ENG-156' });
-  await kvs.set('decision:ENG-6', relayPostDecision);
-
-  // ENG-160 / ENG-8: Sandbox evaluation of Glimpse with synthetic data -> No customer data
-  const syntheticDecision = {
-    issueKey: 'ENG-8',
-    classification: 'NO_CUSTOMER_DATA',
-    vendor: 'Glimpse',
-    purpose: 'Sandbox performance evaluation with synthetic fixtures only',
-    customerDataTouched: false,
-    affectedCustomers: 0,
-    longestNoticeDays: 0,
-    aiReason:
-      'Work involves third-party vendor Glimpse, but ticket description explicitly confines processing to mock fixtures and synthetic data without production personal data.',
-  };
-  await kvs.set('decision:ENG-160', { ...syntheticDecision, issueKey: 'ENG-160' });
-  await kvs.set('decision:ENG-8', syntheticDecision);
-
-  onProgress?.({
-    stage: 'Storage: Planted Decisions',
-    status: 'success',
-    message: 'Seeded decisions for ENG-142, ENG-151, ENG-156, and ENG-160 in KVS.',
-  });
-
+  // Ticket decisions are not seeded: each ticket is read and classified the first time it is assessed.
   return { dpaCount: dpaIds.length, vendorCount: vendorKeys.length };
 }
 
 /**
- * Seed Confluence Space and Pages
- * Creates "Customer contracts" space (CONTRACTS), published subprocessor list page, and 41 DPA pages.
+ * Confluence step. Writes the published subprocessor list and one page per customer DPA,
+ * `size` contracts at a time so each call stays well inside Forge's time limit. Safe to repeat:
+ * pages are found by title and updated, not duplicated. Each DPA record remembers its page id,
+ * which is what the extractor later reads.
  */
-export async function seedConfluence(onProgress?: (log: SeedProgressLog) => void): Promise<{
-  spaceKey: string;
-  pagesCreated: number;
-}> {
-  let spaceKey = 'CONTRACTS';
-  let spaceId = '';
+export async function seedConfluenceBatch(
+  offset: number,
+  size: number,
+  onProgress?: (log: SeedProgressLog) => void
+): Promise<{ spaceKey: string; pagesWritten: number; nextOffset: number; done: boolean }> {
+  const { id: spaceId, key: spaceKey } = await ensureSpace();
+  let written = 0;
 
-  // 1. Check or Create Space
-  try {
-    const listRes = await api.asApp().requestConfluence(route`/wiki/api/v2/spaces?keys=${spaceKey}`);
-    if (listRes.ok) {
-      const data = await listRes.json();
-      if (data.results && data.results.length > 0) {
-        spaceId = data.results[0].id;
-        onProgress?.({
-          stage: 'Confluence: Space',
-          status: 'success',
-          message: `Found existing space "${spaceKey}" (id: ${spaceId}).`,
-        });
-      }
-    }
-  } catch (e: any) {
-    console.warn('Confluence space lookup:', e.message);
+  if (offset === 0) {
+    const rows = PUBLISHED_VENDORS.map(
+      (v) => `<tr><td><strong>${v.name}</strong></td><td>${v.category}</td><td>${v.dataProcessed}</td><td>${v.hostingLocation}</td><td>${v.publishedDate}</td></tr>`
+    ).join('');
+    await upsertPage(
+      spaceId,
+      SUBPROCESSOR_PAGE_TITLE,
+      `<p><strong>Sample data · Fictional</strong></p><p>The official list of approved third-party subprocessors engaged by Ayo Payroll.</p><table><thead><tr><th>Vendor</th><th>Purpose</th><th>Data processed</th><th>Location</th><th>Approved</th></tr></thead><tbody>${rows}</tbody></table>`
+    );
+    written++;
   }
 
-  if (!spaceId) {
-    try {
-      const createSpaceRes = await api.asApp().requestConfluence(route`/wiki/api/v2/spaces`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          key: spaceKey,
-          name: 'Customer contracts',
-          description: {
-            plain: {
-              value: 'Ayo Payroll signed customer data processing agreements (DPAs) and subprocessor registers.',
-              representation: 'plain',
-            },
-          },
-        }),
-      });
+  const batch = CUSTOMER_DPAS.slice(offset, offset + size);
+  const ids = await Promise.all(batch.map((dpa) => upsertPage(spaceId, contractTitle(dpa), buildContractHtml(dpa))));
+  await Promise.all(
+    batch.map(async (dpa, i) => {
+      const record = (await kvs.get(`dpa:${dpa.id}`)) as any;
+      if (record) await kvs.set(`dpa:${dpa.id}`, { ...record, confluencePageId: ids[i] });
+    })
+  );
+  written += batch.length;
 
-      if (createSpaceRes.ok) {
-        const spaceData = await createSpaceRes.json();
-        spaceId = spaceData.id;
-        onProgress?.({
-          stage: 'Confluence: Space',
-          status: 'success',
-          message: `Created space "Customer contracts" (key: ${spaceKey}, id: ${spaceId}).`,
-        });
-      } else {
-        // Fall back to first available space if space creation restricted
-        const fallbackRes = await api.asApp().requestConfluence(route`/wiki/api/v2/spaces?limit=1`);
-        if (fallbackRes.ok) {
-          const fallbackData = await fallbackRes.json();
-          if (fallbackData.results?.length > 0) {
-            spaceId = fallbackData.results[0].id;
-            spaceKey = fallbackData.results[0].key;
-            onProgress?.({
-              stage: 'Confluence: Space',
-              status: 'success',
-              message: `Using existing workspace space "${fallbackData.results[0].name}" (${spaceKey}).`,
-            });
-          }
-        }
-      }
-    } catch (e: any) {
-      console.warn('Confluence space creation fallback:', e.message);
-    }
-  }
-
-  if (!spaceId) {
-    onProgress?.({
-      stage: 'Confluence: Space',
-      status: 'error',
-      message: 'Could not access or create Confluence space. Skipping page creation.',
-    });
-    return { spaceKey, pagesCreated: 0 };
-  }
-
-  let pagesCreated = 0;
-
-  // 2. Create Published Subprocessor List Page
-  try {
-    let vendorRows = '';
-    for (const v of PUBLISHED_VENDORS) {
-      vendorRows += `<tr><td><strong>${v.name}</strong></td><td>${v.category}</td><td>${v.dataProcessed}</td><td>${v.hostingLocation}</td><td>${v.publishedDate}</td></tr>`;
-    }
-
-    const subprocessorPageHtml = `
-      <p><strong>Sample data · Fictional</strong></p>
-      <p>This is the official list of approved third-party subprocessors engaged by Ayo Payroll to process customer payroll data.</p>
-      <table>
-        <thead>
-          <tr><th>Vendor</th><th>Purpose</th><th>Data Categories Processed</th><th>Infrastructure Location</th><th>Approved Date</th></tr>
-        </thead>
-        <tbody>
-          ${vendorRows}
-        </tbody>
-      </table>
-      <p><em>Last updated: 15 November 2026 by Privacy & Compliance Office.</em></p>
-    `;
-
-    const subPageRes = await api.asApp().requestConfluence(route`/wiki/api/v2/pages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        spaceId,
-        title: 'Ayo Payroll — Published Subprocessor List (Sample data, fictional)',
-        status: 'current',
-        body: {
-          representation: 'storage',
-          value: subprocessorPageHtml,
-        },
-      }),
-    });
-
-    if (subPageRes.ok) {
-      pagesCreated++;
-      onProgress?.({
-        stage: 'Confluence: Subprocessor Page',
-        status: 'success',
-        message: 'Published Subprocessor List page created successfully.',
-      });
-    }
-  } catch (e: any) {
-    console.warn('Subprocessor page creation error:', e.message);
-  }
-
-  // 3. Create First Batch of Customer DPA Pages (Top 3 key cases)
-  const priorityDPAs = CUSTOMER_DPAS.slice(0, 3);
-  for (const dpa of priorityDPAs) {
-    try {
-      const dpaHtml = `
-        <p><strong>Sample data · Fictional</strong></p>
-        <p><strong>Data Processing Agreement</strong> between Ayo Payroll Ltd ("Processor") and <strong>${dpa.customerName}</strong> ("Controller").</p>
-        <hr/>
-        <h3>Section 7: Engagement of Subprocessors</h3>
-        <p><em>&ldquo;${dpa.exactClause}&rdquo;</em></p>
-        <hr/>
-        <p><strong>Summary of Agreed Terms:</strong></p>
-        <ul>
-          <li>Notice Period: ${dpa.noticePeriodDays ? `${dpa.noticePeriodDays} ${dpa.noticeUnit}` : 'Unclear / Reasonable period'}</li>
-          <li>Objection Window: ${dpa.objectionWindowDays ? `${dpa.objectionWindowDays} days` : 'Unspecified'}</li>
-          <li>Remedy: ${dpa.remedy}</li>
-          <li>Location Restrictions: ${dpa.locationRestriction}</li>
-        </ul>
-        <p><em>Status: Sample contract for Codegeist 2026 demonstration.</em></p>
-      `;
-
-      const pageRes = await api.asApp().requestConfluence(route`/wiki/api/v2/pages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          spaceId,
-          title: `DPA — ${dpa.customerName} (${dpa.id}) [Sample data, fictional]`,
-          status: 'current',
-          body: {
-            representation: 'storage',
-            value: dpaHtml,
-          },
-        }),
-      });
-
-      if (pageRes.ok) {
-        pagesCreated++;
-      }
-    } catch (e: any) {
-      console.warn(`Error creating DPA page for ${dpa.id}:`, e.message);
-    }
-  }
-
+  const nextOffset = offset + batch.length;
+  const done = nextOffset >= CUSTOMER_DPAS.length;
   onProgress?.({
-    stage: 'Confluence: DPA Pages',
+    stage: 'Confluence: DPA pages',
     status: 'success',
-    message: `Created ${pagesCreated} Confluence pages in space "${spaceKey}".`,
+    message: done ? `All ${CUSTOMER_DPAS.length} contract pages are in space "${spaceKey}".` : `Wrote ${nextOffset} of ${CUSTOMER_DPAS.length} contract pages.`,
   });
-
-  return { spaceKey, pagesCreated };
+  return { spaceKey, pagesWritten: written, nextOffset, done };
 }
 
 /**
@@ -466,49 +229,27 @@ export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Pro
   return { projectKey, issuesCreated, createdTicketKeys };
 }
 
-/**
- * Master Seed: Runs storage, Confluence, and Jira seeding
- */
-export async function runFullAyoPayrollSeed(
-  onProgress?: (log: SeedProgressLog) => void
-): Promise<SeedResult> {
+/** One step of the sample-data load. The admin page calls these in turn and shows progress. */
+export type SeedStep = 'storage' | 'jira' | 'confluence';
+
+export async function runSeedStep(
+  step: SeedStep,
+  offset = 0,
+  size = 6
+): Promise<{ logs: SeedProgressLog[]; done: boolean; nextOffset?: number }> {
   const logs: SeedProgressLog[] = [];
-  const logTracker = (l: SeedProgressLog) => {
-    logs.push(l);
-    onProgress?.(l);
-  };
+  const track = (l: SeedProgressLog) => logs.push(l);
 
-  logTracker({
-    stage: 'Init',
-    status: 'pending',
-    message: 'Starting Ayo Payroll sample data population...',
-  });
-
-  // 1. Storage Seed (Always succeeds deterministically in KVS)
-  const storageResult = await seedStorage(logTracker);
-
-  // 2. Jira Seed (Run before Confluence so issues are available immediately)
-  const jiraResult = await seedJira(logTracker);
-
-  // 3. Confluence Seed
-  const confResult = await seedConfluence(logTracker);
-
-  logTracker({
-    stage: 'Complete',
-    status: 'success',
-    message: `Ayo Payroll seed complete! Jira project: ${jiraResult.projectKey} (tickets: ${jiraResult.createdTicketKeys.join(', ') || 'ready'}).`,
-  });
-
-  return {
-    success: true,
-    dpaCount: storageResult.dpaCount,
-    vendorCount: storageResult.vendorCount,
-    ticketCount: SAMPLE_TICKETS.length,
-    confluenceSpaceKey: confResult.spaceKey,
-    confluencePagesCreated: confResult.pagesCreated,
-    jiraProjectKey: jiraResult.projectKey,
-    jiraIssuesCreated: jiraResult.issuesCreated,
-    logs,
-  };
+  if (step === 'storage') {
+    await seedStorage(track);
+    return { logs, done: true };
+  }
+  if (step === 'jira') {
+    const jira = await seedJira(track);
+    // A reload starts the planted tickets afresh: drop any earlier assessment or override for them.
+    for (const key of jira.createdTicketKeys) await kvs.delete(`decision:${key}`);
+    return { logs, done: true };
+  }
+  const result = await seedConfluenceBatch(offset, size, track);
+  return { logs, done: result.done, nextOffset: result.nextOffset };
 }
-

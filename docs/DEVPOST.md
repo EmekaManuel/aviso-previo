@@ -2,7 +2,7 @@
 
 **Subtitle**: Automated Customer DPA Subprocessor Notice Governance & Release Holds for Jira & Confluence  
 **Category**: Apps for Business Teams (Legal / Privacy / Compliance)  
-**Bonus Prizes**: Best AI-Powered App (`@forge/llm`) & Best Model Context Protocol (MCP) Integration (`rovo:mcp`)  
+**Bonus Prize**: Best app with Atlassian MCP (`rovo:mcp`, three tools). The Rovo `action` modules may also suit Best Agents; no `rovo:agent` module is enabled.  
 
 ---
 
@@ -32,111 +32,72 @@ We built **Aviso Previo** so engineering and legal never operate in disconnected
 
 ## What It Does
 
-Aviso Previo connects signed customer contracts in Confluence directly to engineering releases in Jira:
+Aviso Previo connects signed customer contracts in Confluence to engineering releases in Jira:
 
-### 1. Confluence DPA Extraction with Clause Verbatim Tethering
-Using Forge's hosted `@forge/llm` API (Claude Sonnet tier), Aviso Previo analyzes signed customer DPAs stored in Confluence. It extracts:
-- Notice period duration (e.g., 30 or 60 days)
-- Notice units (strictly differentiating calendar days vs. business days)
-- Objection windows
-- Contractual remedies (e.g., objection and termination rights)
-- Geographic residency restrictions (e.g., EEA/EU-only mandates)
+### 1. Contract extraction with a verbatim clause
+Using Forge's hosted `@forge/llm` API (Claude), Aviso Previo reads a customer DPA from its Confluence page and extracts the notice period, calendar vs. business days, objection window, remedy and any EU/UK-only restriction. Each reading is tied to the exact clause it came from, and **a quoted clause that is not found word for word in the page is rejected**. A vague phrase such as *"a reasonable period"* is never turned into a number: it becomes `unclear: counsel to decide`.
 
-Crucially, every single extraction is permanently tethered to its **exact verbatim clause quote**. Legal counsel reviews and confirms each term side-by-side with the contract text in the **Aviso Previo Admin Workspace**. Vague contractual phrases like *"a reasonable period"* are strictly classified as `unclear: counsel to decide`, completely preventing wrong-but-confident AI hallucinations.
+Counsel review each contract in the admin workspace with the extracted terms beside the clause. **Read with Claude** re-reads the Confluence page and compares field by field. An ambiguous clause is resolved by counsel entering the period they read; a button cannot confirm it.
 
-### 2. Backlog Ticket Reading & Intent Classification
-As engineers write Jira tickets, `@forge/llm` (Claude Haiku tier) automatically inspects ticket summaries and descriptions. It classifies tickets into five distinct categories:
-- `NEW_SUBPROCESSOR`: Introduces an unapproved third-party processing customer data (e.g., `ENG-142: Glimpse`).
-- `LOCATION_CHANGE`: Changes the hosting infrastructure of an existing vendor (e.g., `ENG-156: RelayPost EU -> US`).
-- `NO_CUSTOMER_DATA`: Staging, testing, or synthetic data evaluation (e.g., `ENG-160`).
-- `EXISTING_VENDOR_NO_CHANGE`: Routine SDK upgrades or configuration of approved vendors (e.g., `ENG-151: ErrorSentry`).
-- `UNRELATED`: Standard engineering tasks with no vendor interaction.
+### 2. Ticket reading
+When a ticket is viewed or moved, `@forge/llm` classifies it as a new subprocessor, a location change, synthetic data only, routine work on an approved vendor, or unrelated, and notes where the vendor will process the data. If the model cannot be used, cautious rules take over and lean towards flagging a possible new subprocessor rather than missing one.
 
-### 3. Quiet, High-Context Issue Advisory Panel
-On tickets that trigger obligations, Aviso Previo displays a clean, native UI Kit issue panel designed according to Atlassian design tokens:
-- Displays total affected customer DPAs (e.g., 41 contracts).
-- Identifies customers holding termination rights (e.g., Nordic Logistics AS, Caledonia Finance).
-- Highlights geographic residency conflicts (e.g., 3 customers requiring EU-only processing).
-- Renders the earliest permitted go-live date in a quiet accent teal box (`color.background.accent.teal.subtlest`).
-- Displays the confirmed verbatim clause quote in a distinct serif block.
+### 3. A quiet issue panel
+On a ticket that triggers an obligation, the panel shows the earliest permitted go-live, the number of confirmed contracts affected, the longest notice, termination rights, region conflicts and the binding clause. If counsel have not confirmed any terms yet, it says so and the release stays blocked.
 
-### 4. Pure Deterministic Date Computation
-AI models frequently hallucinate calendar math and weekend offsets. In Aviso Previo, **dates are calculated strictly in deterministic code**:
-- Calendar day additions.
-- Business day additions (skipping weekends).
-- Calculated relative to the notice submission timestamp.
+### 4. Dates in code, never in the model
+Dates are plain TypeScript: calendar days, business days that skip weekends, UTC-safe. The notice clock starts when a ticket is first assessed and does not slide as time passes. The longest notice among the applicable, **counsel-confirmed** contracts sets the date.
 
-### 5. Synchronous Jira Workflow Validator (Release Hold)
-Aviso Previo installs a native `jira:workflowValidator` on deployment transitions (e.g., *In Progress -> Deployed* or *Done*). When an engineer attempts to deploy a ticket introducing an unexpired subprocessor, Jira **synchronously halts the transition** and displays an on-screen blocker banner:
-> *"Aviso Previo Release Hold: Ticket ENG-142 introduces new subprocessor 'Glimpse'. 41 customer DPAs require prior notice (longest: 60 days). Earliest permitted deployment: 19 January 2027. Legal request PRIV-18 must be cleared before deployment."*
+### 5. A Jira workflow validator
+`jira:workflowValidator` blocks release-type transitions (Done, Deployed, Production and similar) while the notice window is open, with a message built from the register: the vendor, the number of contracts, the longest notice and the date. There are no ticket-specific branches. If a ticket cannot be assessed the transition is blocked. A counsel override with a written reason lifts the hold and is recorded with who made it.
 
-If Privacy Counsel grants a negotiated exemption, an authorized human override can be recorded with justification, immediately unlocking the release hold with a permanent audit trail.
+### 6. Customer notice and privacy request
+The panel drafts a customer notice from the ticket and the contracts. **Notify privacy counsel** creates a Jira request in project `PRIV` if it exists, or in the ticket's own project, and shows its real key. If Jira refuses, it says so and does not invent a key.
 
-### 6. Automated Customer Notice Drafting & JSM Request
-Right from the issue panel, Aviso Previo generates a ready-to-send customer notice email containing the subprocessor's name, purpose, data categories, and hosting location. Clicking **"Notify Privacy Counsel"** automatically opens a tracking ticket in Jira Service Management (`PRIV-18`).
-
-### 7. Model Context Protocol (MCP) & Rovo Integration
-Aviso Previo implements Atlassian Forge's `rovo:mcp` module, exposing three powerful compliance tools:
-- `check-subprocessor-commitments`: Allows Rovo agents or external IDEs (Claude Code, Cursor) to check whether a proposed subprocessor requires notice, its longest notice period, and any location conflicts.
-- `explain-customer-term`: Retrieves exact verbatim clause text and commitments for any customer DPA.
-- `open-privacy-notice-request`: Automatically initiates privacy workflows from chat.
+### 7. Rovo MCP tools
+Through `rovo:mcp` and Rovo `action` modules, an agent can run `check-subprocessor-commitments` (what would adding this vendor commit us to), `explain-customer-term` (the verbatim clause for a customer) and `open-privacy-notice-request`.
 
 ---
 
 ## How We Built It
 
-Aviso Previo was built entirely on **Atlassian Forge** with a strict security boundary:
-- **`@forge/react` (Native UI Kit)**: Fast, accessible native Jira and Confluence user interfaces matching Atlassian design tokens.
-- **`@forge/kvs`**: High-performance key-value storage delivering sub-50ms point lookups during Jira workflow validator transitions.
-- **`@forge/llm`**: Atlassian-hosted Claude models (Sonnet for precise DPA legal extraction, Haiku for real-time ticket classification). **Zero customer contract text or Jira ticket data ever leaves the Atlassian cloud perimeter.**
-- **`jira:workflowValidator`**: Synchronous workflow validator enforcing release holds in company-managed projects.
-- **`rovo:mcp`**: Exposing Model Context Protocol tools for AI assistants.
+Built on **Atlassian Forge**:
+- **Custom UI (React + Vite)** for the admin page and for the issue panel, glance and context, with one minimal design system. Both follow Jira's light and dark mode.
+- **`@forge/kvs`** for the register and ticket decisions.
+- **`@forge/llm`** (Claude) for ticket classification and contract extraction.
+- **Confluence REST v2** to write and read the contract pages, and **Jira REST** to read tickets and create privacy requests.
+- **`jira:workflowValidator`** for the release hold, and **`rovo:mcp`** for the agent tools.
+
+One function, `assessIssue`, assesses a ticket. The issue panel, the validator, the Rovo tools and the privacy request all call it, so they cannot disagree.
 
 ---
 
-## Evaluation Benchmarks & Credibility
+## Evaluation and tests
 
-We built comprehensive benchmark evaluation suites to rigorously measure Aviso Previo's performance:
-
-### 1. DPA Extraction Benchmark (41 signed contracts)
-- **Notice Period Days Accuracy**: **100.0% (41/41)**
-- **Unit Accuracy (Calendar vs. Business vs. Unclear)**: **100.0% (41/41)**
-- **Termination Remedy Recall**: **100.0% (2/2)**
-- **Location Limit Recall**: **100.0% (3/3 EU-only restrictions)**
-- **Zero Wrong-but-Confident Rate**: **0.0% hallucinations**
-- **Vague Clause Handling**: **100.0% flagged as `unclear: counsel to decide`**
-
-### 2. Ticket Reading Benchmark (30 labelled tickets)
-- **Overall Classification Accuracy**: **96.7% (29/30)**
-- **Missed New Subprocessors**: **0 (Zero missed subprocessors — 100% recall)**
-- **Location Change Recall**: **100.0% (3/3)**
-- **Synthetic / Sandbox Data Recall**: **100.0% (6/6)**
-
-### 3. Date & Validator Verification
-- **8/8 unit tests passed** verifying business day weekend offsets, calendar arithmetic, and validator transition interception.
-
-### 4. Rovo & MCP Action Verification
-- **23/23 tests passed** validating tool execution, schema compliance, and disclaimer inclusion.
+- **50 automated tests** run the real modules against fake Jira, Confluence, storage and model: the date engine, the hold policy (only confirmed terms count; fails closed), the validator on arbitrary ticket keys, the classifier and its fallback, the extractor's verbatim check and scoring, the Rovo tools, and the Confluence seeding.
+- **The Evaluation tab** has the model read all 41 contracts from their Confluence pages and scores every answer against the label each sample contract was written with, counting a confident wrong answer as a failure. Run it in the app to get live figures; they are not claimed here until recorded.
+- **The rule fallback** gets 28 of 30 labelled tickets right and finds all 8 new subprocessors. It was tuned while looking at that set, so treat it as optimistic.
 
 ---
 
-## What AI Does vs. What Deterministic Code Does
+## What AI Does vs. What Code Does
 
-| AI (Claude Sonnet & Haiku via `@forge/llm`) | Deterministic Code (TypeScript & `@forge/kvs`) |
+| AI (Claude via `@forge/llm`) | Code (TypeScript, `@forge/kvs`) |
 |---|---|
-| Extracts candidate notice days & units from legalese | Pure calendar and business day date arithmetic |
-| Extracts verbatim clause excerpts | Halts Jira deployment transitions in Workflow Validator |
-| Classifies engineer intent in Jira ticket summaries | Evaluates whether current timestamp < notice unlock date |
-| Detects location changes & synthetic data contexts | Fast sub-50ms KVS point-lookups |
-| Drafts customer email notification text | Enforces human counsel verification before holds take effect |
+| Reads a contract page and quotes the subprocessor clause | Verifies the quote is in the page, word for word |
+| Reads a ticket and says what kind of change it is | Date arithmetic: calendar days, business days, the longest notice |
+| Flags a vague clause as `unclear` | Decides whether a hold applies, using only confirmed terms |
+| | Blocks the transition, fails closed, records overrides |
+| | Drafts the customer notice from a template |
 
 ---
 
 ## Challenges We Overcame
 
-1. **Eliminating Legal Hallucinations**: Standard LLMs love to guess vague contractual terms (e.g., interpreting *"prompt and reasonable notice"* as 30 days). We implemented a strict rule: if no explicit number of days is stated, the system outputs `unclear: counsel to decide`. Counsel must review the clause before it becomes actionable.
-2. **Workflow Validator Performance**: Jira board transitions feel broken if a validator lags. By storing pre-computed assessments in `@forge/kvs`, our validator performs simple point lookups executing in under 30ms.
-3. **Data Residency & Perimeter Compliance**: Enterprise legal teams forbid sending DPA contracts to third-party AI APIs. By using `@forge/llm`, every inference occurs directly inside Atlassian's secure infrastructure.
+1. **Not guessing legal terms.** Models like to resolve vague wording into a number. The prompt forces `unclear`, the code treats an unclear term as not counting, and only counsel can resolve it.
+2. **One source of truth.** The panel, the validator and the agent tools first computed things separately and drifted. Moving them to one assessment, with numbers recomputed from the register each time, removed the drift and the hardcoded demo values.
+3. **Failing safely.** A model outage or an unreadable ticket must never mean "allowed". The classifier falls back to rules, an empty or unconfirmed register blocks, and an unassessable ticket blocks.
+4. **Data residency.** Using `@forge/llm` keeps contract and ticket text inside Atlassian's infrastructure.
 
 ---
 

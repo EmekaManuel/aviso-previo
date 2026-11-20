@@ -9,14 +9,13 @@ This document tracks every Forge manifest module, permission scope, runtime conf
 ### `jira:issuePanel`
 - **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/jira-issue-panel/`
 - **Purpose**: Displays the Aviso Previo subprocessor advisory panel on Jira issue view.
-- **Render type**: UI Kit `render: native`
+- **Render type**: Custom UI (`resource: main`, built from `admin-ui/panel`)
 - **Manifest key**:
   ```yaml
   jira:issuePanel:
     - key: aviso-previo-issue-panel
       title: Aviso Previo
       icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
-      render: native
       resource: main
       resolver:
         function: resolver
@@ -25,7 +24,7 @@ This document tracks every Forge manifest module, permission scope, runtime conf
 ### `jira:adminPage`
 - **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/jira-admin-page/`
 - **Purpose**: Privacy Counsel administration workspace to review DPA extractions, confirm terms against clause quotes, and load Ayo Payroll sample data.
-- **Render type**: UI Kit `render: native`
+- **Render type**: Custom UI (`resource: admin`, built from `admin-ui/src`)
 
 ### `jira:workflowValidator`
 - **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/jira-workflow-validator/`
@@ -42,7 +41,7 @@ This document tracks every Forge manifest module, permission scope, runtime conf
 ### `llm`
 - **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/llm/`
 - **Purpose**: Enables native Atlassian-hosted Claude models (`@forge/llm`) without sending customer contract data outside Atlassian's compliance boundary.
-- **Model Family**: `claude` (Sonnet tier for DPA extraction, Haiku tier for ticket analysis).
+- **Model Family**: `claude`. Used for contract extraction (reads a Confluence page) and ticket classification (with a rule fallback).
 
 ---
 
