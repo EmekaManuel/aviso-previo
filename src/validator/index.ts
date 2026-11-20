@@ -1,3 +1,4 @@
+import api, { route } from '@forge/api';
 import { assessIssue, IssueAssessment } from '../assessment/assessIssue';
 
 export interface ValidatorPayload {
@@ -17,11 +18,50 @@ export interface ValidatorResult {
 /** Statuses that put code in front of customers. Moving work along earlier is always allowed. */
 const RELEASE_STATUS = /\b(done|deployed|deploy|released?|production|live|closed|resolved)\b/i;
 
+interface Target { name?: string; category?: string }
+
+/** What the payload says about where the issue is going, whatever shape Jira sends. */
+function targetFromPayload(payload: ValidatorPayload): Target {
+  const t: any = payload.transition ?? {};
+  return {
+    name: t.to?.name ?? t.toStatus?.name ?? t.destination?.name ?? t.name,
+    category: t.to?.statusCategory?.key ?? t.toStatus?.statusCategory?.key,
+  };
+}
+
+/**
+ * The payload does not always carry the target status, so when it does not, ask Jira
+ * which status this transition id leads to. Returns an empty target if that fails.
+ */
+async function resolveTarget(payload: ValidatorPayload): Promise<Target> {
+  const fromPayload = targetFromPayload(payload);
+  if (fromPayload.name || fromPayload.category) return fromPayload;
+  const id = (payload.transition as any)?.id;
+  const key = payload.issue?.key;
+  if (!id || !key) return {};
+  try {
+    const res = await api.asApp().requestJira(route`/rest/api/3/issue/${key}/transitions`);
+    if (!res.ok) return {};
+    const match = ((await res.json()).transitions ?? []).find((x: any) => String(x.id) === String(id));
+    return { name: match?.to?.name ?? match?.name, category: match?.to?.statusCategory?.key };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * A transition is only waved through when we can positively say it is not a release.
+ * If the target cannot be identified at all, treat it as a release: fail closed.
+ */
+export function isReleaseTarget(target: Target): boolean {
+  if (target.category === 'done') return true;
+  if (!target.name) return true;
+  return RELEASE_STATUS.test(target.name);
+}
+
+/** Kept for callers that only have the payload (no Jira lookup). */
 export function isReleaseTransition(payload: ValidatorPayload): boolean {
-  const t = payload.transition;
-  if (!t) return true; // unknown: treat as a release, so we fail closed
-  if (t.to?.statusCategory?.key === 'done') return true;
-  return RELEASE_STATUS.test(`${t.to?.name ?? ''} ${t.name ?? ''}`);
+  return isReleaseTarget(targetFromPayload(payload));
 }
 
 export function holdMessage(a: IssueAssessment): string {
@@ -47,9 +87,10 @@ export function holdMessage(a: IssueAssessment): string {
  */
 export async function validateTransition(payload: ValidatorPayload): Promise<ValidatorResult> {
   const issueKey = payload?.issue?.key || '';
-  const target = payload?.transition?.to?.name ?? payload?.transition?.name ?? '(none)';
-  if (!isReleaseTransition(payload)) {
-    console.log(`[Aviso Previo] ${issueKey} -> "${target}": not a release transition, allowed`);
+  const target = await resolveTarget(payload);
+  const label = target.name ?? `(unknown, transition ${JSON.stringify(payload?.transition ?? null)})`;
+  if (!isReleaseTarget(target)) {
+    console.log(`[Aviso Previo] ${issueKey} -> "${label}": not a release transition, allowed`);
     return { result: true };
   }
 
@@ -60,7 +101,7 @@ export async function validateTransition(payload: ValidatorPayload): Promise<Val
       return { result: true };
     }
     const block = a.holdApplies && a.holdActive;
-    console.log(`[Aviso Previo] ${issueKey} -> "${target}": ${a.classification}, hold applies=${a.holdApplies}, active=${a.holdActive}, ${block ? 'BLOCKED' : 'allowed'}`);
+    console.log(`[Aviso Previo] ${issueKey} -> "${label}": ${a.classification}, hold applies=${a.holdApplies}, active=${a.holdActive}, ${block ? 'BLOCKED' : 'allowed'}`);
     if (block) return { result: false, errorMessage: holdMessage(a) };
     return { result: true };
   } catch (error: any) {

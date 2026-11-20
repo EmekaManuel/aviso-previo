@@ -29,6 +29,8 @@ export const jira = {
   created: [] as any[],
   failCreate: false,
   failRead: false,
+  transitions: [] as any[],
+  failTransitions: false,
   counter: 100,
   reset() {
     this.issues.clear();
@@ -36,9 +38,12 @@ export const jira = {
     this.created = [];
     this.failCreate = false;
     this.failRead = false;
+    this.transitions = [];
+    this.failTransitions = false;
     this.counter = 100;
   },
   handle(path: string, opts: any = {}): Resp {
+    if (/^\/rest\/api\/3\/issue\/[A-Z]+-\d+\/transitions$/.test(path)) return this.failTransitions ? resp({}, 500) : resp({ transitions: this.transitions });
     const issue = path.match(/^\/rest\/api\/3\/issue\/([A-Z]+-\d+)/);
     if (issue && !opts.method) {
       if (this.failRead) return resp({}, 503);

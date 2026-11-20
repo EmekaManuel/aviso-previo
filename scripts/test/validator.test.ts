@@ -109,3 +109,31 @@ test('the same ticket gives the same answer on the second call without re-classi
   assert.deepEqual(a, b);
   assert.equal(calls, 1);
 });
+
+// Jira does not always send the target status in the payload. These are the real-world shapes.
+const onlyId = (key: string, id: string) => ({ issue: { key }, transition: { id } });
+
+test('a transition that arrives with only an id is resolved through Jira, and a release is blocked', async () => {
+  jira.transitions = [{ id: '31', name: 'Done', to: { name: 'Done', statusCategory: { key: 'done' } } }, { id: '21', name: 'Start', to: { name: 'In Progress', statusCategory: { key: 'indeterminate' } } }];
+  jira.issues.set('ENG-5', { summary: 'Use Zorbly', description: 'payslip data' });
+  classifyAs('NEW_SUBPROCESSOR', 'Zorbly');
+  const blocked = await validateTransition(onlyId('ENG-5', '31'));
+  assert.equal(blocked.result, false);
+  assert.match(blocked.errorMessage!, /Zorbly/);
+  assert.equal((await validateTransition(onlyId('ENG-5', '21'))).result, true);
+});
+
+test('a transition that cannot be identified is treated as a release (fails closed)', async () => {
+  jira.issues.set('ENG-5', { summary: 'Use Zorbly', description: 'payslip data' });
+  classifyAs('NEW_SUBPROCESSOR', 'Zorbly');
+  assert.equal((await validateTransition({ issue: { key: 'ENG-5' }, transition: {} } as any)).result, false);
+  assert.equal((await validateTransition({ issue: { key: 'ENG-5' } } as any)).result, false);
+  jira.failTransitions = true;
+  assert.equal((await validateTransition(onlyId('ENG-5', '31'))).result, false);
+});
+
+test('an unidentifiable transition on an unrelated ticket is still allowed', async () => {
+  jira.issues.set('ENG-9', { summary: 'Fix CSS', description: 'padding' });
+  classifyAs('UNRELATED', null);
+  assert.equal((await validateTransition({ issue: { key: 'ENG-9' }, transition: {} } as any)).result, true);
+});
