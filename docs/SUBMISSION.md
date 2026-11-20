@@ -13,7 +13,7 @@ What Codegeist asks for, and what is done.
 
 ## Judges must switch the release hold on
 
-Jira only runs a workflow validator after an admin adds it to a transition. This cannot be automated (there is no supported API for it), so the README walkthrough includes the one-time steps: Engineering space, Space settings, Workflows, edit, click the transition into Done, Validators tab, add **Aviso Previo Subprocessor Hold**, publish. The admin page shows the same steps. Show this in the video.
+Jira only runs a workflow validator after an admin adds it to a transition. This cannot be automated (there is no supported API for it), so the README walkthrough includes the one-time steps: Engineering space, Space settings, Workflows, edit, click the transition into Done, Validate details tab, Add rule, pick **Aviso Previo Subprocessor Hold**, publish. The admin page shows the same steps. Show this in the video.
 
 ## Installation link
 

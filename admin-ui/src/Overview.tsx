@@ -134,8 +134,8 @@ export function Overview({ data, busy, onSeed, onConfirmAll, onOpen, onGoRegiste
         </p>
         <ol className="steps">
           <li><span>Open the Engineering space, then <b>Space settings</b>, then <b>Workflows</b>, and edit the workflow.</span></li>
-          <li><span>Click the transition into <b>Done</b> (and any <b>Deployed</b> or <b>Production</b> transition), then open its <b>Validators</b> tab.</span></li>
-          <li><span>Choose <b>Add validator</b>, pick <b>Aviso Previo Subprocessor Hold</b>, then <b>Update</b> and <b>Publish</b>.</span></li>
+          <li><span>Click the transition into <b>Done</b> (and any <b>Deployed</b> or <b>Production</b> transition), then open its <b>Validate details</b> tab.</span></li>
+          <li><span>Choose <b>Add rule</b>, pick <b>Aviso Previo Subprocessor Hold</b>, then <b>Update</b> and <b>Publish</b>.</span></li>
         </ol>
       </section>
 
