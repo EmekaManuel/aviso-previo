@@ -11,6 +11,10 @@ What Codegeist asks for, and what is done.
 | Installation link for judges | **Done.** Sharing is on for Jira and Confluence; the link is in the README and `DEVPOST.md`. If you regenerate it in the console, the old link stops working. |
 | Marketplace bonus | Not entered. See below. |
 
+## Judges must switch the release hold on
+
+Jira only runs a workflow validator after an admin adds it to a transition. This cannot be automated (there is no supported API for it), so the README walkthrough includes the one-time steps: Engineering space, Space settings, Workflows, edit, click the transition into Done, Validators tab, add **Aviso Previo Subprocessor Hold**, publish. The admin page shows the same steps. Show this in the video.
+
 ## Installation link
 
 An installation link needs a production deployment, then one switch in the developer console. Only the app owner can do the second part.
