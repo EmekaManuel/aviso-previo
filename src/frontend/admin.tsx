@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import ForgeReconciler, {
   Text,
   Heading,
@@ -25,9 +25,18 @@ import ForgeReconciler, {
   ModalTransition,
   ProgressBar,
   Spinner,
-} from '@forge/react';
-import { invoke } from '@forge/bridge';
-import { Footnote, Kpi, Field, FieldRow, card, cardHighlight, tint, quote } from './ui';
+} from "@forge/react";
+import { invoke } from "@forge/bridge";
+import {
+  Footnote,
+  Kpi,
+  Field,
+  FieldRow,
+  card,
+  cardHighlight,
+  tint,
+  quote,
+} from "./ui";
 
 interface DPAItem {
   id: string;
@@ -39,7 +48,7 @@ interface DPAItem {
   remedy: string;
   locationRestriction: string;
   exactClause: string;
-  status: 'confirmed' | 'draft' | 'unclear';
+  status: "confirmed" | "draft" | "unclear";
 }
 
 interface VendorItem {
@@ -74,12 +83,13 @@ interface AdminState {
   benchmarkScore: BenchmarkScore | null;
 }
 
-type StatusFilter = 'all' | 'confirmed' | 'unconfirmed' | 'unclear';
+type StatusFilter = "all" | "confirmed" | "unconfirmed" | "unclear";
 
-const isUnclear = (d: DPAItem) => d.status === 'unclear' || d.noticeUnit === 'unclear';
+const isUnclear = (d: DPAItem) =>
+  d.status === "unclear" || d.noticeUnit === "unclear";
 
 const statusLozenge = (d: DPAItem) => {
-  if (d.status === 'confirmed') {
+  if (d.status === "confirmed") {
     return <Lozenge appearance="success">Confirmed</Lozenge>;
   }
   if (isUnclear(d)) {
@@ -89,15 +99,15 @@ const statusLozenge = (d: DPAItem) => {
 };
 
 const noticeText = (d: DPAItem) => {
-  if (!d.noticePeriodDays) return 'Not stated';
-  return `${d.noticePeriodDays} ${d.noticeUnit === 'business' ? 'business' : 'calendar'} days`;
+  if (!d.noticePeriodDays) return "Not stated";
+  return `${d.noticePeriodDays} ${d.noticeUnit === "business" ? "business" : "calendar"} days`;
 };
 
 const FILTER_OPTIONS: { label: string; value: StatusFilter }[] = [
-  { label: 'All Contracts', value: 'all' },
-  { label: 'Confirmed by Counsel', value: 'confirmed' },
-  { label: 'Awaiting Review', value: 'unconfirmed' },
-  { label: 'Needs Human Review (Ambiguous)', value: 'unclear' },
+  { label: "All Contracts", value: "all" },
+  { label: "Confirmed by Counsel", value: "confirmed" },
+  { label: "Awaiting Review", value: "unconfirmed" },
+  { label: "Needs Human Review (Ambiguous)", value: "unclear" },
 ];
 
 const AdminApp = () => {
@@ -113,13 +123,13 @@ const AdminApp = () => {
     seedLogs: [],
     benchmarkScore: null,
   });
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<StatusFilter>('all');
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<StatusFilter>("all");
   const [selected, setSelected] = useState<DPAItem | null>(null);
   const [benchmarking, setBenchmarking] = useState(false);
 
   const loadData = () => {
-    invoke<any>('getAdminState')
+    invoke<any>("getAdminState")
       .then((res) => {
         setState((prev) => ({
           ...prev,
@@ -133,7 +143,7 @@ const AdminApp = () => {
         }));
       })
       .catch((e) => {
-        console.error('Error fetching admin state:', e);
+        console.error("Error fetching admin state:", e);
         setState((prev) => ({ ...prev, loading: false }));
       });
   };
@@ -146,18 +156,21 @@ const AdminApp = () => {
     setState((prev) => ({
       ...prev,
       seeding: true,
-      seedLogs: ['Initializing Ayo Payroll sample database and Confluence DPA pages...'],
+      seedLogs: [
+        "Initializing Ayo Payroll sample database and Confluence DPA pages...",
+      ],
     }));
     try {
-      const res: any = await invoke('seedAyoPayroll');
-      const messages = res.logs?.map((l: any) => `${l.stage}: ${l.message}`) || [];
+      const res: any = await invoke("seedAyoPayroll");
+      const messages =
+        res.logs?.map((l: any) => `${l.stage}: ${l.message}`) || [];
       setState((prev) => ({ ...prev, seeding: false, seedLogs: messages }));
       loadData();
     } catch (e: any) {
       setState((prev) => ({
         ...prev,
         seeding: false,
-        seedLogs: [...prev.seedLogs, `Error: ${e.message || 'Seed failed'}`],
+        seedLogs: [...prev.seedLogs, `Error: ${e.message || "Seed failed"}`],
       }));
     }
   };
@@ -165,10 +178,12 @@ const AdminApp = () => {
   const handleRunBenchmark = async () => {
     setBenchmarking(true);
     try {
-      const score = (await invoke<any>('getExtractionBenchmarkScore')) as BenchmarkScore;
+      const score = (await invoke<any>(
+        "getExtractionBenchmarkScore",
+      )) as BenchmarkScore;
       setState((prev) => ({ ...prev, benchmarkScore: score }));
     } catch (e) {
-      console.error('Error running benchmark:', e);
+      console.error("Error running benchmark:", e);
     } finally {
       setBenchmarking(false);
     }
@@ -176,20 +191,20 @@ const AdminApp = () => {
 
   const handleConfirm = async (dpaId: string) => {
     try {
-      await invoke('confirmDPA', { dpaId });
+      await invoke("confirmDPA", { dpaId });
       setSelected(null);
       loadData();
     } catch (e: any) {
-      console.error('Confirm error:', e);
+      console.error("Confirm error:", e);
     }
   };
 
   const handleConfirmAll = async () => {
     try {
-      await invoke('confirmAllDPAs');
+      await invoke("confirmAllDPAs");
       loadData();
     } catch (e: any) {
-      console.error('Confirm all error:', e);
+      console.error("Confirm all error:", e);
     }
   };
 
@@ -199,22 +214,28 @@ const AdminApp = () => {
 
   const visibleDpas = state.dpas.filter((d) => {
     const q = query.trim().toLowerCase();
-    if (q && !`${d.customerName} ${d.country}`.toLowerCase().includes(q)) return false;
-    if (filter === 'confirmed') return d.status === 'confirmed';
-    if (filter === 'unclear') return isUnclear(d);
-    if (filter === 'unconfirmed') return d.status !== 'confirmed' && !isUnclear(d);
+    if (q && !`${d.customerName} ${d.country}`.toLowerCase().includes(q))
+      return false;
+    if (filter === "confirmed") return d.status === "confirmed";
+    if (filter === "unclear") return isUnclear(d);
+    if (filter === "unconfirmed")
+      return d.status !== "confirmed" && !isUnclear(d);
     return true;
   });
 
   const dpaTable = {
     head: {
       cells: [
-        { key: 'customer', content: 'Customer & Jurisdiction', isSortable: true },
-        { key: 'notice', content: 'Prior Notice Window', isSortable: true },
-        { key: 'objection', content: 'Objection Period' },
-        { key: 'terms', content: 'Special Commitments' },
-        { key: 'status', content: 'Counsel Status' },
-        { key: 'actions', content: '' },
+        {
+          key: "customer",
+          content: "Customer & Jurisdiction",
+          isSortable: true,
+        },
+        { key: "notice", content: "Prior Notice Window", isSortable: true },
+        { key: "objection", content: "Objection Period" },
+        { key: "terms", content: "Special Commitments" },
+        { key: "status", content: "Counsel Status" },
+        { key: "actions", content: "" },
       ],
     },
     rows: visibleDpas.map((d) => ({
@@ -225,24 +246,35 @@ const AdminApp = () => {
           content: (
             <Stack space="space.025">
               <Text weight="semibold">{d.customerName}</Text>
-              <Text size="small" color="color.text.subtlest">{d.country}</Text>
+              <Text size="small" color="color.text.subtlest">
+                {d.country}
+              </Text>
             </Stack>
           ),
         },
         { key: d.noticePeriodDays ?? 0, content: <Text>{noticeText(d)}</Text> },
         {
           content: (
-            <Text>{d.objectionWindowDays ? `${d.objectionWindowDays} calendar days` : 'Not specified'}</Text>
+            <Text>
+              {d.objectionWindowDays
+                ? `${d.objectionWindowDays} calendar days`
+                : "Not specified"}
+            </Text>
           ),
         },
         {
           content: (
             <Inline space="space.050" shouldWrap>
-              {d.remedy === 'terminate' && <Lozenge appearance="removed">Termination Remedy</Lozenge>}
-              {d.locationRestriction === 'EU_UK_ONLY' && <Lozenge appearance="moved">EU/UK Only</Lozenge>}
-              {d.remedy !== 'terminate' && d.locationRestriction !== 'EU_UK_ONLY' && (
-                <Text color="color.text.subtlest">Standard</Text>
+              {d.remedy === "terminate" && (
+                <Lozenge appearance="removed">Termination Remedy</Lozenge>
               )}
+              {d.locationRestriction === "EU_UK_ONLY" && (
+                <Lozenge appearance="moved">EU/UK Only</Lozenge>
+              )}
+              {d.remedy !== "terminate" &&
+                d.locationRestriction !== "EU_UK_ONLY" && (
+                  <Text color="color.text.subtlest">Standard</Text>
+                )}
             </Inline>
           ),
         },
@@ -261,10 +293,10 @@ const AdminApp = () => {
   const vendorTable = {
     head: {
       cells: [
-        { key: 'name', content: 'Approved Subprocessor', isSortable: true },
-        { key: 'category', content: 'Service Category', isSortable: true },
-        { key: 'hosting', content: 'Approved Hosting Region' },
-        { key: 'published', content: 'Governance Listing Date' },
+        { key: "name", content: "Approved Subprocessor", isSortable: true },
+        { key: "category", content: "Service Category", isSortable: true },
+        { key: "hosting", content: "Approved Hosting Region" },
+        { key: "published", content: "Governance Listing Date" },
       ],
     },
     rows: state.vendors.map((v) => ({
@@ -281,12 +313,36 @@ const AdminApp = () => {
   const bench = state.benchmarkScore;
   const benchRows: [string, string, string][] = bench
     ? [
-        ['Notice Period Days Accuracy', bench.noticePeriodAccuracy, '100% across 41 signed contracts'],
-        ['Notice Unit Distinction (Calendar vs Business)', bench.unitAccuracy, 'No confusion of business days'],
-        ['Termination Remedy Recall', bench.terminationRecall, '2/2 high-risk contracts flagged'],
-        ['EU/UK Location Restriction Recall', bench.locationLimitRecall, '3/3 data residency boundaries detected'],
-        ['Hallucination Rate (Wrong-but-Confident)', bench.zeroHallucinationRate, '0 false positive terms generated'],
-        ['Ambiguous Clause Routing', bench.unclearHandling, '1/1 routed to human legal counsel'],
+        [
+          "Notice Period Days Accuracy",
+          bench.noticePeriodAccuracy,
+          "100% across 41 signed contracts",
+        ],
+        [
+          "Notice Unit Distinction (Calendar vs Business)",
+          bench.unitAccuracy,
+          "No confusion of business days",
+        ],
+        [
+          "Termination Remedy Recall",
+          bench.terminationRecall,
+          "2/2 high-risk contracts flagged",
+        ],
+        [
+          "EU/UK Location Restriction Recall",
+          bench.locationLimitRecall,
+          "3/3 data residency boundaries detected",
+        ],
+        [
+          "Hallucination Rate (Wrong-but-Confident)",
+          bench.zeroHallucinationRate,
+          "0 false positive terms generated",
+        ],
+        [
+          "Ambiguous Clause Routing",
+          bench.unclearHandling,
+          "1/1 routed to human legal counsel",
+        ],
       ]
     : [];
 
@@ -295,7 +351,12 @@ const AdminApp = () => {
       {/* Top Header Card */}
       <Box xcss={card}>
         <Stack space="space.150">
-          <Inline spread="space-between" alignBlock="center" shouldWrap rowSpace="space.100">
+          <Inline
+            spread="space-between"
+            alignBlock="center"
+            shouldWrap
+            rowSpace="space.100"
+          >
             <Stack space="space.050">
               <Inline space="space.100" alignBlock="center" shouldWrap>
                 <Heading as="h2">Aviso Previo</Heading>
@@ -303,12 +364,20 @@ const AdminApp = () => {
                 <Lozenge appearance="success">Live Guardrails Active</Lozenge>
               </Inline>
               <Text color="color.text.subtlest">
-                Automated customer DPA intelligence for Ayo Payroll. Scans Confluence contract pages, maintains subprocessor register, and coordinates Jira deployment holds.
+                Automated customer DPA intelligence for Ayo Payroll. Scans
+                Confluence contract pages, maintains subprocessor register, and
+                coordinates Jira deployment holds.
               </Text>
             </Stack>
             <Inline space="space.100" shouldWrap>
-              <Button appearance="primary" onClick={handleSeed} isDisabled={state.seeding}>
-                {state.seeding ? 'Populating Sample…' : 'Load Ayo Payroll Sample'}
+              <Button
+                appearance="primary"
+                onClick={handleSeed}
+                isDisabled={state.seeding}
+              >
+                {state.seeding
+                  ? "Populating Sample…"
+                  : "Load Ayo Payroll Sample"}
               </Button>
               {pending > 0 && (
                 <Button onClick={handleConfirmAll}>
@@ -323,12 +392,18 @@ const AdminApp = () => {
       {/* Seed Progress or Status Banner */}
       {state.seedLogs.length > 0 && (
         <SectionMessage
-          appearance={state.seedLogs.some((l) => l.startsWith('Error')) ? 'error' : 'success'}
+          appearance={
+            state.seedLogs.some((l) => l.startsWith("Error"))
+              ? "error"
+              : "success"
+          }
           title="Sample Data Engine Status"
         >
           <Stack space="space.050">
             {state.seedLogs.map((log, idx) => (
-              <Text key={idx} size="small">{log}</Text>
+              <Text key={idx} size="small">
+                {log}
+              </Text>
             ))}
           </Stack>
         </SectionMessage>
@@ -373,10 +448,14 @@ const AdminApp = () => {
                 Legal Counsel DPA Review & Confirmation Progress
               </Text>
               <Text size="small" weight="semibold">
-                {state.confirmedCount} of {reviewable} commitments confirmed ({Math.round(progress * 100)}%)
+                {state.confirmedCount} of {reviewable} commitments confirmed (
+                {Math.round(progress * 100)}%)
               </Text>
             </Inline>
-            <ProgressBar value={progress} appearance={progress >= 1 ? 'success' : 'default'} />
+            <ProgressBar
+              value={progress}
+              appearance={progress >= 1 ? "success" : "default"}
+            />
           </Stack>
         </Box>
       )}
@@ -394,20 +473,29 @@ const AdminApp = () => {
         <TabPanel>
           <Box paddingBlockStart="space.200">
             <Stack space="space.200">
-              <Inline space="space.150" rowSpace="space.100" shouldWrap alignBlock="center">
-                <Box xcss={{ flexGrow: 1, minWidth: '240px', maxWidth: '440px' }}>
+              <Inline
+                space="space.150"
+                rowSpace="space.100"
+                shouldWrap
+                alignBlock="center"
+              >
+                <Box
+                  xcss={{ flexGrow: 1, minWidth: "240px", maxWidth: "440px" }}
+                >
                   <Textfield
                     placeholder="Search by customer name or country (e.g. Nordic, Germany)"
                     value={query}
                     onChange={(e: any) => setQuery(e.target.value)}
                   />
                 </Box>
-                <Box xcss={{ minWidth: '220px' }}>
+                <Box xcss={{ minWidth: "220px" }}>
                   <Select
                     appearance="default"
                     options={FILTER_OPTIONS}
                     value={FILTER_OPTIONS.find((o) => o.value === filter)}
-                    onChange={(o: any) => setFilter((o?.value as StatusFilter) || 'all')}
+                    onChange={(o: any) =>
+                      setFilter((o?.value as StatusFilter) || "all")
+                    }
                   />
                 </Box>
                 <Text size="small" color="color.text.subtlest">
@@ -425,7 +513,11 @@ const AdminApp = () => {
                   header="No customer DPAs found"
                   description="Click 'Load Ayo Payroll Sample' above to populate 41 customer contracts from Confluence, 9 approved vendors, and planted engineering tickets."
                   primaryAction={
-                    <Button appearance="primary" onClick={handleSeed} isDisabled={state.seeding}>
+                    <Button
+                      appearance="primary"
+                      onClick={handleSeed}
+                      isDisabled={state.seeding}
+                    >
                       Load Ayo Payroll Sample
                     </Button>
                   }
@@ -437,7 +529,9 @@ const AdminApp = () => {
                   rowsPerPage={10}
                   defaultSortKey="customer"
                   defaultSortOrder="ASC"
-                  emptyView={<Text>No contracts match your search filter.</Text>}
+                  emptyView={
+                    <Text>No contracts match your search filter.</Text>
+                  }
                 />
               )}
             </Stack>
@@ -448,9 +542,15 @@ const AdminApp = () => {
         <TabPanel>
           <Box paddingBlockStart="space.200">
             <Stack space="space.200">
-              <SectionMessage appearance="information" title="Published Subprocessor Policy">
+              <SectionMessage
+                appearance="information"
+                title="Published Subprocessor Policy"
+              >
                 <Text>
-                  These 9 subprocessors have been approved and published to Ayo Payroll customers. Routine SDK version updates or bugfix migrations to existing vendors require 0 notice days and pass deployment validators automatically.
+                  These 9 subprocessors have been approved and published to Ayo
+                  Payroll customers. Routine SDK version updates or bugfix
+                  migrations to existing vendors require 0 notice days and pass
+                  deployment validators automatically.
                 </Text>
               </SectionMessage>
               {state.vendors.length === 0 ? (
@@ -478,20 +578,38 @@ const AdminApp = () => {
                 <Stack space="space.150">
                   <Inline spread="space-between" alignBlock="center" shouldWrap>
                     <Stack space="space.025">
-                      <Heading as="h3">Ground-Truth Extraction Scorecard</Heading>
+                      <Heading as="h3">
+                        Ground-Truth Extraction Scorecard
+                      </Heading>
                       <Text color="color.text.subtlest">
-                        Evaluates contract term extraction against hand-labelled answer keys across all 41 customer DPAs.
+                        Evaluates contract term extraction against hand-labelled
+                        answer keys across all 41 customer DPAs.
                       </Text>
                     </Stack>
-                    <Button appearance="primary" onClick={handleRunBenchmark} isDisabled={benchmarking}>
-                      {benchmarking ? 'Evaluating LLM Accuracy…' : bench ? 'Re-Run Evaluation' : 'Run Benchmark Evaluation'}
+                    <Button
+                      appearance="primary"
+                      onClick={handleRunBenchmark}
+                      isDisabled={benchmarking}
+                    >
+                      {benchmarking
+                        ? "Evaluating LLM Accuracy…"
+                        : bench
+                          ? "Re-Run Evaluation"
+                          : "Run Benchmark Evaluation"}
                     </Button>
                   </Inline>
 
                   {bench && (
                     <Stack space="space.200">
                       <Inline space="space.150" alignBlock="center" shouldWrap>
-                        <Lozenge appearance={bench.overallStatus === 'PASS' ? 'success' : 'removed'} isBold>
+                        <Lozenge
+                          appearance={
+                            bench.overallStatus === "PASS"
+                              ? "success"
+                              : "removed"
+                          }
+                          isBold
+                        >
                           Overall Status: {bench.overallStatus}
                         </Lozenge>
                         <Text size="small" color="color.text.subtlest">
@@ -502,17 +620,27 @@ const AdminApp = () => {
                       <DynamicTable
                         head={{
                           cells: [
-                            { key: 'metric', content: 'Evaluation Metric' },
-                            { key: 'score', content: 'Accuracy Score' },
-                            { key: 'notes', content: 'Audit Verification' },
+                            { key: "metric", content: "Evaluation Metric" },
+                            { key: "score", content: "Accuracy Score" },
+                            { key: "notes", content: "Audit Verification" },
                           ],
                         }}
                         rows={benchRows.map(([m, s, n]) => ({
                           key: m,
                           cells: [
                             { content: <Text weight="semibold">{m}</Text> },
-                            { content: <Lozenge appearance="success">{s}</Lozenge> },
-                            { content: <Text size="small" color="color.text.subtlest">{n}</Text> },
+                            {
+                              content: (
+                                <Lozenge appearance="success">{s}</Lozenge>
+                              ),
+                            },
+                            {
+                              content: (
+                                <Text size="small" color="color.text.subtlest">
+                                  {n}
+                                </Text>
+                              ),
+                            },
                           ],
                         }))}
                       />
@@ -532,27 +660,43 @@ const AdminApp = () => {
                 <Stack space="space.200">
                   <Heading as="h3">Codegeist 2026 Judge Walkthrough</Heading>
                   <Text>
-                    Aviso Previo is designed to solve a critical enterprise problem: developers shipping code with new SDKs without notifying privacy counsel, triggering silent breach of contract with enterprise customers.
+                    Aviso Previo is designed to solve a critical enterprise
+                    problem: developers shipping code with new SDKs without
+                    notifying privacy counsel, triggering silent breach of
+                    contract with enterprise customers.
                   </Text>
                   <Stack space="space.150">
                     <Field label="Step 1 · Explore the DPA Register">
                       <Text>
-                        Notice above that Nordic Logistics holds a 60-calendar-day notice window with a termination remedy, and 3 customers restrict data processing strictly to the EU/UK.
+                        Notice above that Nordic Logistics holds a
+                        60-calendar-day notice window with a termination remedy,
+                        and 3 customers restrict data processing strictly to the
+                        EU/UK.
                       </Text>
                     </Field>
                     <Field label="Step 2 · Check Jira Release Hold (ENG-2)">
                       <Text>
-                        Open ticket ENG-2 ('Add session replay to payslip screen using Glimpse'). Notice the Aviso Previo panel calculates a deterministic 60-day notice window (Earliest go-live: 19 January 2027) and the Jira workflow validator blocks transition to 'Done'.
+                        Open ticket ENG-2 ('Add session replay to payslip screen
+                        using Glimpse'). Notice the Aviso Previo panel
+                        calculates a deterministic 60-day notice window
+                        (Earliest go-live: 19 January 2027) and the Jira
+                        workflow validator blocks transition to 'Done'.
                       </Text>
                     </Field>
                     <Field label="Step 3 · Check Approved Vendor Pass (ENG-151)">
                       <Text>
-                        Open ticket ENG-151 ('Upgrade ErrorSentry SDK to v8'). Because ErrorSentry is already on the approved subprocessor list, Aviso Previo displays a quiet 'No action needed' badge and allows immediate deployment.
+                        Open ticket ENG-151 ('Upgrade ErrorSentry SDK to v8').
+                        Because ErrorSentry is already on the approved
+                        subprocessor list, Aviso Previo displays a quiet 'No
+                        action needed' badge and allows immediate deployment.
                       </Text>
                     </Field>
                     <Field label="Step 4 · Rovo MCP Compliance Tools">
                       <Text>
-                        Aviso Previo exposes 3 MCP compliance tools for Rovo and AI chat: 'check-subprocessor-commitments', 'explain-customer-term', and 'open-privacy-notice-request'.
+                        Aviso Previo exposes 3 MCP compliance tools for Rovo and
+                        AI chat: 'check-subprocessor-commitments',
+                        'explain-customer-term', and
+                        'open-privacy-notice-request'.
                       </Text>
                     </Field>
                   </Stack>
@@ -570,25 +714,37 @@ const AdminApp = () => {
         {selected && (
           <Modal onClose={() => setSelected(null)} width="medium">
             <ModalHeader>
-              <ModalTitle>DPA Term Verification: {selected.customerName}</ModalTitle>
+              <ModalTitle>
+                DPA Term Verification: {selected.customerName}
+              </ModalTitle>
             </ModalHeader>
             <ModalBody>
               <Stack space="space.200">
                 <Inline space="space.100" shouldWrap alignBlock="center">
                   {statusLozenge(selected)}
-                  <Text color="color.text.subtlest">Governing Jurisdiction: {selected.country}</Text>
+                  <Text color="color.text.subtlest">
+                    Governing Jurisdiction: {selected.country}
+                  </Text>
                 </Inline>
 
                 <FieldRow>
-                  <Field label="Prior Written Notice">{noticeText(selected)}</Field>
+                  <Field label="Prior Written Notice">
+                    {noticeText(selected)}
+                  </Field>
                   <Field label="Objection Window">
-                    {selected.objectionWindowDays ? `${selected.objectionWindowDays} calendar days` : 'Not specified'}
+                    {selected.objectionWindowDays
+                      ? `${selected.objectionWindowDays} calendar days`
+                      : "Not specified"}
                   </Field>
                   <Field label="Contract Remedy">
-                    {selected.remedy === 'terminate' ? 'Termination upon objection' : 'Standard objection'}
+                    {selected.remedy === "terminate"
+                      ? "Termination upon objection"
+                      : "Standard objection"}
                   </Field>
                   <Field label="Hosting Restrictions">
-                    {selected.locationRestriction === 'EU_UK_ONLY' ? 'EU/UK Only (No US egress)' : 'No location restriction'}
+                    {selected.locationRestriction === "EU_UK_ONLY"
+                      ? "EU/UK Only (No US egress)"
+                      : "No location restriction"}
                   </Field>
                 </FieldRow>
 
@@ -602,9 +758,15 @@ const AdminApp = () => {
                 </Stack>
 
                 {isUnclear(selected) && (
-                  <SectionMessage appearance="warning" title="Ambiguous Legal Term Detected">
+                  <SectionMessage
+                    appearance="warning"
+                    title="Ambiguous Legal Term Detected"
+                  >
                     <Text>
-                      This customer clause uses vague wording (e.g. 'reasonable notice' without a specified day count). Aviso Previo safely avoids hallucinating a number and flags it for human legal counsel interpretation.
+                      This customer clause uses vague wording (e.g. 'reasonable
+                      notice' without a specified day count). Aviso Previo
+                      safely avoids hallucinating a number and flags it for
+                      human legal counsel interpretation.
                     </Text>
                   </SectionMessage>
                 )}
@@ -614,8 +776,11 @@ const AdminApp = () => {
               <Button appearance="subtle" onClick={() => setSelected(null)}>
                 Close
               </Button>
-              {selected.status !== 'confirmed' && !isUnclear(selected) && (
-                <Button appearance="primary" onClick={() => handleConfirm(selected.id)}>
+              {selected.status !== "confirmed" && !isUnclear(selected) && (
+                <Button
+                  appearance="primary"
+                  onClick={() => handleConfirm(selected.id)}
+                >
                   Confirm Clause Terms
                 </Button>
               )}
@@ -630,5 +795,5 @@ const AdminApp = () => {
 ForgeReconciler.render(
   <React.StrictMode>
     <AdminApp />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

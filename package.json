@@ -4,7 +4,9 @@
   "private": true,
   "description": "Aviso Previo — Subprocessor notice and DPA compliance for Jira & Confluence (Codegeist 2026)",
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsc --noEmit && npm run build:admin",
+    "build:admin": "npm --prefix admin-ui run build",
+    "assets": "node scripts/build-assets.mjs",
     "lint": "forge lint",
     "test": "node scripts/score-extraction.js && node scripts/score-tickets.js && node scripts/test-dates.js && node scripts/test-rovo.js",
     "test:extraction": "node scripts/score-extraction.js",

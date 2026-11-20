@@ -27,7 +27,6 @@ modules:
   jira:adminPage:
     - key: aviso-previo-admin-page
       title: Aviso Previo Admin
-      render: native
       resource: admin
       resolver:
         function: resolver
@@ -116,7 +115,7 @@ resources:
   - key: main
     path: src/frontend/index.tsx
   - key: admin
-    path: src/frontend/admin.tsx
+    path: admin-ui/dist
 app:
   id: ari:cloud:ecosystem::app/2bd1fd88-a709-4b4c-bf65-fcdac4a24bf8
   runtime:
