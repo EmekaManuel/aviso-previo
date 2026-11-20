@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { AdminState, DPA } from './types';
+import type { AdminState, DPA, GraphStatus } from './types';
 import { StatusPill, isUnclear, noticeText } from './ui';
 
 interface Props {
@@ -9,9 +9,11 @@ interface Props {
   onConfirmAll: () => void;
   onOpen: (d: DPA) => void;
   onGoRegister: () => void;
+  graph: GraphStatus | null;
+  onSyncGraph: () => void;
 }
 
-export function Overview({ data, busy, onSeed, onConfirmAll, onOpen, onGoRegister }: Props) {
+export function Overview({ data, busy, onSeed, onConfirmAll, onOpen, onGoRegister, graph, onSyncGraph }: Props) {
   const { dpas, dpaCount, confirmedCount, unclearCount, vendorCount } = data;
   const reviewable = dpaCount - unclearCount;
   const pending = Math.max(reviewable - confirmedCount, 0);
@@ -124,6 +126,31 @@ export function Overview({ data, busy, onSeed, onConfirmAll, onOpen, onGoRegiste
           </ol>
         </section>
       </div>
+
+      <section className="card card-pad">
+        <div className="row spread">
+          <div>
+            <h2 className="h2">Teamwork Graph</h2>
+            <p className="muted" style={{ margin: '4px 0 0', maxWidth: '64ch' }}>
+              Each contract is added to the graph as a document and linked to the Jira tickets whose release hold it binds, so Rovo can answer which contracts a ticket touches.
+            </p>
+          </div>
+          {graph?.connected && <button className="btn" disabled={busy} onClick={onSyncGraph}>Sync now</button>}
+        </div>
+        <div style={{ marginTop: 14 }}>
+          {!graph ? null : !graph.connected ? (
+            <p className="muted" style={{ margin: 0 }}>Not connected. An admin connects it once under Apps, Connected apps, Aviso Previo, Connections.</p>
+          ) : graph.lastSync ? (
+            <span className={`pill ${graph.lastSync.ok ? 'ok' : 'warn'}`}>
+              {graph.lastSync.ok
+                ? `${graph.lastSync.synced} contracts synced, ${graph.lastSync.linkedTickets} ticket${graph.lastSync.linkedTickets === 1 ? '' : 's'} linked · ${new Date(graph.lastSync.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`
+                : graph.lastSync.message || 'The last sync failed'}
+            </span>
+          ) : (
+            <p className="muted" style={{ margin: 0 }}>Connected. Waiting for the first sync.</p>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

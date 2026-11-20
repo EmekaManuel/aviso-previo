@@ -7,6 +7,12 @@ const Module = require('node:module');
 
 export const store = new Map<string, any>();
 
+/** Records what the code sends to the Teamwork Graph. */
+export const twg: { calls: any[]; respond: (req: any) => any } = {
+  calls: [],
+  respond: (req) => ({ success: true, results: { accepted: req.objects.map((o: any) => ({ key: { entityId: o.id } })), rejected: [] } }),
+};
+
 export const llm: { handler: (req: any) => any } = {
   handler: () => {
     throw new Error('LLM not configured for this test');
@@ -42,6 +48,7 @@ export const jira = {
         fields: { summary: i.summary, description: { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: i.description }] }] } },
       });
     }
+    if (path === '/rest/api/3/serverInfo') return resp({ baseUrl: 'https://example.atlassian.net/' });
     const project = path.match(/^\/rest\/api\/3\/project\/([A-Z]+)$/);
     if (project) return this.projects.has(project[1]) ? resp({ key: project[1] }) : resp({}, 404);
     if (path === '/rest/api/3/issue' && opts.method === 'POST') {
@@ -112,6 +119,10 @@ const fakes: Record<string, any> = {
     route: (strings: TemplateStringsArray, ...vals: any[]) => strings.reduce((acc, s, i) => acc + s + (i < vals.length ? String(vals[i]) : ''), ''),
   },
   '@forge/llm': { chat: async (req: any) => llm.handler(req) },
+  '@forge/teamwork-graph': {
+    graph: { setObjects: async (req: any) => { twg.calls.push(req); return twg.respond(req); } },
+    types: {},
+  },
 };
 
 const originalLoad = Module._load;
@@ -122,6 +133,8 @@ Module._load = function (request: string, ...rest: any[]) {
 
 export function reset() {
   store.clear();
+  twg.calls = [];
+  twg.respond = (req) => ({ success: true, results: { accepted: req.objects.map((o: any) => ({ key: { entityId: o.id } })), rejected: [] } });
   jira.reset();
   confluence.reset();
   llm.handler = () => {

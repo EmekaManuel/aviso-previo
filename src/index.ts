@@ -6,3 +6,4 @@ export {
   openNoticeAction,
 } from './rovo/actions';
 
+export { onConnectionChange } from './graph/contractGraph';

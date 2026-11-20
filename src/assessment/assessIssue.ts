@@ -5,6 +5,7 @@ import { classifyTicket, isValidClassification, TicketClassification } from '../
 import { evaluateHold, HoldBasis, parseHostingRegion } from '../engine/holdPolicy';
 import { generateDraftCustomerNotice } from '../legal/draftNotice';
 import { loadRegister, loadVendors } from '../storage/register';
+import { syncContractsToGraph } from '../graph/contractGraph';
 
 /** What is stored per ticket (Forge KVS `decision:{issueKey}`). Numbers are NOT stored: they are recomputed from the register. */
 export interface DecisionRecord {
@@ -68,6 +69,14 @@ async function fetchIssueText(issueKey: string): Promise<{ summary: string; desc
   return { summary: data.fields?.summary ?? '', description: adfToText(data.fields?.description).trim() };
 }
 
+/** Remembers which tickets have a decision, so the graph sync can find them. */
+async function indexDecision(issueKey: string): Promise<boolean> {
+  const index = ((await kvs.get('decisions:index')) as string[] | undefined) ?? [];
+  if (index.includes(issueKey)) return false;
+  await kvs.set('decisions:index', [...index, issueKey]);
+  return true;
+}
+
 /** Loads the stored decision, or reads the ticket, classifies it and stores the decision. */
 async function loadOrCreateDecision(issueKey: string, now: Date): Promise<DecisionRecord> {
   const stored = (await kvs.get(`decision:${issueKey}`)) as any;
@@ -90,6 +99,7 @@ async function loadOrCreateDecision(issueKey: string, now: Date): Promise<Decisi
       overriddenAt: stored.overriddenAt,
     };
     if (!stored.noticeStartedAt || !stored.hostingRegion) await kvs.set(`decision:${issueKey}`, decision);
+    await indexDecision(issueKey);
     return decision;
   }
 
@@ -106,6 +116,11 @@ async function loadOrCreateDecision(issueKey: string, now: Date): Promise<Decisi
     noticeStartedAt: now.toISOString(),
   };
   await kvs.set(`decision:${issueKey}`, decision);
+  await indexDecision(issueKey);
+  // A new ticket may now bind contracts: tell the Teamwork Graph (a no-op until an admin connects it).
+  if (decision.classification === 'NEW_SUBPROCESSOR' || decision.classification === 'LOCATION_CHANGE') {
+    await syncContractsToGraph().catch((e) => console.warn('Teamwork Graph sync:', e?.message));
+  }
   return decision;
 }
 

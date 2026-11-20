@@ -40,6 +40,8 @@ export function createMockApi(): Api {
       };
     },
     applyExtraction: async () => {},
+    getGraphStatus: async () => ({ connected: true, lastSync: { at: new Date().toISOString(), ok: true, synced: 41, rejected: 0, linkedTickets: 2 } }),
+    syncGraph: async () => ({ at: new Date().toISOString(), ok: true, synced: 41, rejected: 0, linkedTickets: 2 }),
     evalBatch: async (offset) => {
       await pause(200);
       const batch = CUSTOMER_DPAS.slice(offset, offset + 4);

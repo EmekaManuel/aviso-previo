@@ -38,6 +38,23 @@ This document tracks every Forge manifest module, permission scope, runtime conf
   }
   ```
 
+### `rovo:agent`
+- **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/rovo-agent/`
+- **Purpose**: The Aviso Previo Rovo agent. Inline `prompt`, four `conversationStarters`, and the three `action` keys below as `actions`.
+
+### `action` (three)
+- **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/rovo-action/`
+- **Keys**: `check-subprocessor-commitments` (GET), `explain-customer-term` (GET), `open-privacy-notice-request` (CREATE). Each has `description` and typed `inputs`.
+
+### `rovo:mcp`
+- **Purpose**: Exposes the same three tools over MCP.
+
+### `graph:connector`
+- **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/teamwork-graph-connector/`
+- **Purpose**: Ingests each DPA as an `atlassian:document` and associates it with Jira issues (`issueIdOrKeys`) through `graph.setObjects` from `@forge/teamwork-graph`.
+- **Connection**: no `auth` and no form: all data is on the same site. An admin connects it under Apps, Connected apps, Connections; `onConnectionChange` stores the connection id.
+- **Capabilities**: `replicatesPermissions: false` (objects are visible to the workspace), `syncFidelity: upsert`.
+
 ### `llm`
 - **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/llm/`
 - **Purpose**: Enables native Atlassian-hosted Claude models (`@forge/llm`) without sending customer contract data outside Atlassian's compliance boundary.
@@ -53,6 +70,7 @@ This document tracks every Forge manifest module, permission scope, runtime conf
 - **`read:page:confluence`**: Read Confluence DPA pages and the published subprocessor list via Confluence REST API v2 (`/wiki/api/v2/pages/{id}`).
 - **`write:confluence-content`**: Create and update Confluence pages for DPA contracts and subprocessor lists.
 - **`write:confluence-space`**: Create the "Customer contracts" space (`CONTRACTS`).
+- **`write:object:jira`, `read:object:jira`, `delete:object:jira`**: Teamwork Graph ingestion (required by `graph:connector`).
 - **`storage:app`**: Persist DPA contract terms, vendor registry, and ticket decisions using `@forge/kvs`.
 
 ---

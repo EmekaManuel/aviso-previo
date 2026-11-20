@@ -1,4 +1,4 @@
-import type { AdminState, EvalBatch, ExtractionCheck, SeedLog } from './types';
+import type { AdminState, EvalBatch, ExtractionCheck, GraphStatus, SeedLog } from './types';
 
 /**
  * Talks to the Forge resolver. When the page is opened outside Jira
@@ -21,6 +21,8 @@ export type Api = {
   extract(id: string): Promise<ExtractionCheck>;
   applyExtraction(id: string): Promise<void>;
   evalBatch(offset: number): Promise<EvalBatch>;
+  getGraphStatus(): Promise<GraphStatus>;
+  syncGraph(): Promise<NonNullable<GraphStatus['lastSync']>>;
 };
 
 const forgeApi: Api = {
@@ -32,6 +34,8 @@ const forgeApi: Api = {
   extract: (dpaId) => call('extractContract', { dpaId }),
   applyExtraction: async (dpaId) => void (await call('applyExtraction', { dpaId })),
   evalBatch: (offset) => call('runExtractionEvaluation', { offset, size: 4 }),
+  getGraphStatus: () => call('getGraphStatus'),
+  syncGraph: () => call('syncGraph'),
 };
 
 let mock: Promise<Api> | null = null;
@@ -49,6 +53,8 @@ export const api: Api = inForge
       extract: viaMock('extract'),
       applyExtraction: viaMock('applyExtraction'),
       evalBatch: viaMock('evalBatch'),
+      getGraphStatus: viaMock('getGraphStatus'),
+      syncGraph: viaMock('syncGraph'),
     };
 
 /** Loads the sample company: storage, Jira, then the Confluence pages a few at a time. */

@@ -32,16 +32,42 @@ modules:
       name: Aviso Previo Subprocessor Hold
       description: Blocks deployment transitions before customer DPA notice windows expire
       function: release-validator-func
-  # rovo:agent:
-  #   - key: aviso-previo-agent
-  #     name: Aviso Previo
-  #     description: Monitors subprocessor compliance, checks customer DPA notice commitments, explains verbatim contract clauses, and coordinates privacy notice holds.
-  #     prompt: >
-  #       You are Aviso Previo, a subprocessor compliance agent for Ayo Payroll.
-  #     actions:
-  #       - check-subprocessor-commitments
-  #       - explain-customer-term
-  #       - open-privacy-notice-request
+  rovo:agent:
+    - key: aviso-previo-agent
+      name: Aviso Previo
+      description: Answers what customer DPAs promise about new subprocessors. Checks notice periods and region limits, quotes the exact clause, and opens privacy requests.
+      prompt: >
+        You are Aviso Previo, a subprocessor compliance assistant for Ayo Payroll's privacy counsel and engineers.
+        Your job is to say what the customer data processing agreements (DPAs) commit the company to when a vendor is added or moved, using only your tools.
+        Rules: always use a tool to get contract facts and never answer notice periods, dates or clauses from memory.
+        Quote clauses exactly as the tool returns them. Report dates exactly as the tool computes them and never do date arithmetic yourself.
+        If a tool says a clause is unclear or a term is not confirmed by counsel, say so plainly and do not guess a number.
+        If a tool returns an error, such as an empty register, relay it. When asked about a Jira issue that changes a vendor, check the vendor first, then offer to open a privacy request.
+        Only open a privacy request when the person asks for one. End any answer about a contract with: Aviso Previo summarizes your contracts. It is not legal advice.
+      conversationStarters:
+        - What would adding Glimpse commit us to?
+        - What does the Nordic Logistics DPA say about subprocessors?
+        - Which customers forbid processing outside the EU?
+        - Open a privacy request for ENG-2
+      actions:
+        - check-subprocessor-commitments
+        - explain-customer-term
+        - open-privacy-notice-request
+  graph:connector:
+    - key: aviso-previo-contracts
+      name: Aviso Previo Contracts
+      icons:
+        light: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+        dark: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+      objectTypes:
+        - atlassian:document
+      capabilities:
+        replicatesPermissions: false
+        syncFidelity: upsert
+        supportsIncrementalSync: false
+      datasource:
+        onConnectionChange:
+          function: graph-connection-func
   rovo:mcp:
     - key: aviso-previo-mcp
       name: Aviso Previo Compliance Tools
@@ -108,6 +134,8 @@ modules:
       handler: index.explainTermAction
     - key: open-notice-func
       handler: index.openNoticeAction
+    - key: graph-connection-func
+      handler: index.onConnectionChange
 resources:
   - key: main
     path: admin-ui/dist-panel
@@ -123,6 +151,9 @@ permissions:
     - write:jira-work
     - read:jira-user
     - manage:jira-configuration
+    - write:object:jira
+    - read:object:jira
+    - delete:object:jira
     - read:page:confluence
     - write:page:confluence
     - read:space:confluence

@@ -8,11 +8,11 @@
 
 [Walkthrough](#try-it) · [How it works](#how-it-works) · [What is real, and what is not](#what-is-real-and-what-is-not) · [Docs](docs/)
 
-![Forge](https://img.shields.io/badge/Atlassian-Forge-0052CC) ![Jira](https://img.shields.io/badge/Jira-workflow%20validator-0052CC) ![Confluence](https://img.shields.io/badge/Confluence-contract%20pages-0052CC) ![MCP](https://img.shields.io/badge/Rovo-MCP%20tools-6554C0) ![tests](https://img.shields.io/badge/tests-50%20passing-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
+![Forge](https://img.shields.io/badge/Atlassian-Forge-0052CC) ![Jira](https://img.shields.io/badge/Jira-workflow%20validator-0052CC) ![Confluence](https://img.shields.io/badge/Confluence-contract%20pages-0052CC) ![Rovo](https://img.shields.io/badge/Rovo-agent%20%2B%20MCP-6554C0) ![Teamwork Graph](https://img.shields.io/badge/Teamwork%20Graph-connector-0052CC) ![tests](https://img.shields.io/badge/tests-60%20passing-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
 </div>
 
-<!-- TODO before submitting: add the public YouTube demo link and the Forge installation link to the row above and to "Try it". -->
+<!-- TODO before submitting: add the public YouTube demo link and the Forge installation link (steps in docs/SUBMISSION.md) to the row above and to "Try it". -->
 
 **What it is.** Aviso Previo is a Forge app for the people who sign data processing agreements (DPAs) and the engineers who ship the code those agreements cover. When a Jira ticket brings in a new third-party processor, or moves an existing one to another region, the issue panel shows which customer contracts apply, the longest notice period, and the earliest date the change may go live. A workflow validator blocks the move to Done until then. Privacy counsel get an admin workspace to review every contract term next to the clause it came from.
 
@@ -43,11 +43,15 @@
 6. Click **View draft customer notice**, then **Notify privacy counsel**. A Jira request is created in project `PRIV` if it exists, otherwise in the ticket's own project, and its real key is shown.
 7. Open *Upgrade ErrorSentry SDK to v8*. The vendor is approved, so the panel says **No action needed** and the transition goes through.
 
+8. **Teamwork Graph (optional, admin, one time).** Open Apps, Connected apps, Aviso Previo, Connections and connect **Aviso Previo Contracts**. The contracts are added to the graph and linked to the tickets you have viewed. The admin overview shows the last sync, and **Sync now** repeats it.
+9. **Rovo agent.** Open Rovo chat, pick the **Aviso Previo** agent and ask *What would adding Glimpse commit us to?* It answers from the register through its tools, never from memory.
+
 **Atlassian, concretely.**
 - **Jira workflow validator:** blocks release-type transitions on a held ticket and says why, with the date ([`validator/index.ts`](src/validator/index.ts)). A counsel override with a recorded reason lifts the hold. If a ticket cannot be assessed, the transition is blocked.
 - **Jira issue panel, glance and context:** one Custom UI bundle shows the assessment where the engineer already works ([`admin-ui/panel/`](admin-ui/panel/)).
 - **Confluence:** all 41 sample contracts are written as pages (idempotently, in batches) and read back by the extractor through the Confluence v2 API ([`confluence/pages.ts`](src/confluence/pages.ts), [`seedEngine.ts`](src/seed/seedEngine.ts)).
-- **Rovo MCP tools:** three tools let an agent ask about a vendor, quote a customer's clause, or open a privacy request ([`manifest.yml`](manifest.yml), [`rovo/actions.ts`](src/rovo/actions.ts)).
+- **Rovo agent and MCP tools:** an Aviso Previo agent, and the same three tools over MCP, let people and other agents ask about a vendor, quote a customer's clause, or open a privacy request ([`manifest.yml`](manifest.yml), [`rovo/actions.ts`](src/rovo/actions.ts)).
+- **Teamwork Graph:** each contract is ingested as a document and linked to the Jira tickets whose release hold it binds ([`graph/contractGraph.ts`](src/graph/contractGraph.ts)).
 - **Forge KVS and Forge LLM:** the register and ticket decisions live in `@forge/kvs`; classification and extraction use `@forge/llm`, so contract and ticket text stay inside Atlassian.
 
 **Honest limits.**
@@ -56,7 +60,8 @@
 - **The live model's accuracy is not recorded in this repo.** Run the Evaluation tab to produce it. The tests use a fake model, and the fallback rules score 28/30 on the labelled tickets after being tuned while looking at that set, so treat that number as optimistic.
 - **The vendor's hosting region comes from the ticket text.** If the ticket does not say, the region is treated as outside the EU/UK.
 - **The workflow validator may call the model.** The first assessment of an unseen ticket reads it from Jira and classifies it; later checks use the stored decision.
-- **Rovo and MCP tools are tested directly,** not through a live Rovo or external MCP client. There is no `rovo:agent` module enabled and Teamwork Graph is not used.
+- **Rovo and MCP tools are tested directly,** not through a live Rovo or external MCP client. The Rovo agent is deployed, but its answers have not been evaluated.
+- **The Teamwork Graph sync is tested against a fake graph client.** It only runs after an admin connects the connector, and the shape of what the graph accepts is confirmed by the live **Sync now** result, not by this repo's tests.
 - **Sample data only.** Aviso Previo summarizes contracts and is not legal advice.
 
 More in [What is real, and what is not](#what-is-real-and-what-is-not).
@@ -79,9 +84,11 @@ More in [What is real, and what is not](#what-is-real-and-what-is-not).
 - A draft customer notice, a one-click privacy request, and a human override that records who and why.
 - A workflow validator that stops a held ticket from reaching Done.
 
-**For agents (Rovo and MCP):**
+**For agents (Rovo, MCP and the Teamwork Graph):**
 
-- `check-subprocessor-commitments`, `explain-customer-term` and `open-privacy-notice-request`, each returning the legal disclaimer.
+- A Rovo agent, **Aviso Previo**, with conversation starters, whose prompt makes it use its tools for every contract fact.
+- `check-subprocessor-commitments`, `explain-customer-term` and `open-privacy-notice-request`, each returning the legal disclaimer, also exposed over MCP.
+- A Teamwork Graph connector that adds each DPA to the graph as a document and associates it with the Jira tickets it binds, so contracts and work are connected in the graph. An admin status card and a **Sync now** button show the last sync.
 
 <p align="center">
   <img src="docs/img/register.png" alt="The register: 41 customer DPAs with notice period, objection window, rights and limits, and status." width="80%" />
@@ -100,7 +107,9 @@ More in [What is real, and what is not](#what-is-real-and-what-is-not).
 | Register and decisions | `@forge/kvs` (`dpa:{id}`, `vendor:{key}`, `decision:{issueKey}`) | [`src/storage/register.ts`](src/storage/register.ts) |
 | Contract pages | Confluence REST v2: find the space, create or update pages, read them back | [`src/confluence/pages.ts`](src/confluence/pages.ts) |
 | Privacy request | Jira REST: creates a Task in project `PRIV` if it exists, else in the ticket's project | [`src/legal/legalRequest.ts`](src/legal/legalRequest.ts) |
-| Agent tools | `rovo:mcp` and Rovo `action` modules | [`src/rovo/actions.ts`](src/rovo/actions.ts) |
+| Agent | `rovo:agent` with three Rovo `action` modules | [`manifest.yml`](manifest.yml), [`src/rovo/actions.ts`](src/rovo/actions.ts) |
+| Agent tools over MCP | `rovo:mcp` | [`manifest.yml`](manifest.yml) |
+| Contracts and tickets in the graph | `graph:connector`, `@forge/teamwork-graph` (`setObjects`, `atlassian:document`, `issueIdOrKeys` associations) | [`src/graph/contractGraph.ts`](src/graph/contractGraph.ts) |
 | Date and hold logic | Plain TypeScript: calendar and business days, fail closed | [`src/engine/`](src/engine/) |
 
 Every manifest module, scope and API signature is logged against the Atlassian docs in [docs/FORGE.md](docs/FORGE.md).
@@ -115,7 +124,7 @@ Every manifest module, scope and API signature is logged against the Atlassian d
 npm install
 npm --prefix admin-ui install
 npm run build          # type-checks the functions, builds the admin page and the issue panel
-npm test               # 50 tests that run the real modules against fake Jira, Confluence, storage and model
+npm test               # 60 tests that run the real modules against fake Jira, Confluence, storage and model
 forge lint
 ```
 
@@ -144,7 +153,7 @@ Custom UI is served from `admin-ui/dist` and `admin-ui/dist-panel`, so run `npm 
 
 ## Use it from an AI agent
 
-Three tools are exposed through `rovo:mcp`, each backed by a Rovo `action`. They read the same register the app uses, count only confirmed terms, and always return the disclaimer.
+The **Aviso Previo** Rovo agent uses three tools, and the same tools are exposed through `rovo:mcp`, each backed by a Rovo `action`. They read the same register the app uses, count only confirmed terms, and always return the disclaimer.
 
 | Tool | Input | Returns |
 |---|---|---|
@@ -167,7 +176,9 @@ flowchart LR
   A --> H[evaluateHold<br/>pure TypeScript]
   H --> P[Issue panel]
   H --> V[Workflow validator<br/>blocks transition to Done]
-  R --> M[Rovo MCP tools]
+  R --> M[Rovo agent + MCP tools]
+  R --> G[Teamwork Graph<br/>contract documents linked to tickets]
+  A --> G
 ```
 
 **The date** is computed in one pure function. The clock starts the first time a ticket is assessed and is stored with the decision, so it does not slide forward as time passes. The hold runs to the end of the longest notice period among the contracts that apply.
@@ -207,6 +218,7 @@ src/
   storage/                  Register and vendor reads from KVS
   legal/                    Draft customer notice and the Jira privacy request
   rovo/                     MCP and Rovo actions
+  graph/                    Teamwork Graph connector: contracts as documents, linked to tickets
   seed/, data/              The fictional Ayo Payroll sample: 41 DPAs, 9 vendors, planted tickets
 admin-ui/
   src/                      Admin page (Custom UI, React + Vite)
@@ -218,11 +230,11 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 
 ## Built for the Codegeist criteria
 
-**Category:** Apps for Business Teams (legal and privacy). **Bonus prize aimed at:** Best app with Atlassian MCP (`rovo:mcp`, three tools). The Rovo `action` modules may also suit the agents prize; there is no `rovo:agent` module enabled yet (it is commented out in the manifest).
+**Category:** Apps for Business Teams (legal and privacy). **Bonus prizes aimed at:** Best Agents (a `rovo:agent` with three reusable `action` modules), Best app with Atlassian MCP (`rovo:mcp`, three tools), and Best apps with Teamwork Graph integration (a `graph:connector` that links contracts to tickets). Marketplace is not entered.
 
 | Criterion | Where to look |
 |---|---|
-| Technological implementation | A workflow validator and issue panel driven by one data-driven assessment, a deterministic date engine, model-based ticket classification and contract extraction with a verbatim-clause check, an evaluation that runs the model over 41 Confluence pages, a counsel review and resolution flow, three Rovo tools, real Confluence and Jira reads and writes, and 50 tests that run the actual modules. The limits are listed above. |
+| Technological implementation | A workflow validator and issue panel driven by one data-driven assessment, a deterministic date engine, model-based ticket classification and contract extraction with a verbatim-clause check, an evaluation that runs the model over 41 Confluence pages, a counsel review and resolution flow, a Rovo agent with three tools also exposed over MCP, a Teamwork Graph connector, real Confluence and Jira reads and writes, and 60 tests that run the actual modules. The limits are listed above. |
 | Design | One minimal system across admin and issue panel: [assets/BRAND.md](assets/BRAND.md). Responsive down to the Jira sidebar, light and dark. |
 | Potential impact | Subprocessor-notice breaches are a real, specific contractual risk for any SaaS company with enterprise customers. The audience is privacy counsel, DPOs and the engineers who ship. |
 | Innovation | Contract commitments checked at the moment a ticket changes status, instead of in a spreadsheet after the fact, with a model that is kept away from the decision and made to prove its quotes. |
@@ -230,7 +242,7 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 
 ## What is real, and what is not
 
-**Built and tested** (`npm test`, 50 tests with the real modules and a fake Jira, Confluence, storage and model):
+**Built and tested** (`npm test`, 60 tests with the real modules and a fake Jira, Confluence, storage and model):
 
 - The date engine: calendar days, business days that skip weekends, UTC-safe, the longest notice winning (12 tests, with the hold policy).
 - The hold policy: only confirmed terms count, it fails closed when nothing is confirmed, region changes only touch restricted contracts, an unknown region counts as outside, and the clock does not slide.
@@ -239,6 +251,7 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 - The extractor: verbatim-clause verification, rejection of an invented clause, failures reported as errors, and the scoring of a reading against a label (9 tests).
 - The Rovo tools: new, approved and moved vendors, the empty-register error, ambiguous clauses, and privacy requests created for real, idempotent, and never faked (12 tests).
 - The Confluence seeding: one page per contract in batches, safe to repeat, and readable back as text (4 tests).
+- The Teamwork Graph sync: nothing happens until connected, contracts become workspace-visible documents, tickets are linked only to the contracts their hold binds, and rejections and failures are recorded (9 tests).
 
 **Built, not covered by automated tests:**
 
@@ -253,7 +266,8 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 - **Notice sent versus assessed.** The clock starts at first assessment, not when the notice goes out.
 - **Hosting region.** It is read from the ticket text, with unknown treated as outside the EU/UK.
 - **Live-model classification accuracy** is not measured here.
-- **Rovo agent and Teamwork Graph.** No `rovo:agent` module is enabled and the app does not use Teamwork Graph.
+- **Agent quality.** The Rovo agent is deployed with a bounded prompt, but there is no recorded evaluation of its answers.
+- **A live graph sync result.** It appears on the admin page once an admin connects the connector.
 - **Marketplace.** The app is not listed.
 
 ## Tests and verification
@@ -270,8 +284,9 @@ npm test
 | [`extraction.test.ts`](scripts/test/extraction.test.ts) | Verbatim-clause checking, invented clauses, errors, and the scoring |
 | [`rovo.test.ts`](scripts/test/rovo.test.ts) | The three Rovo tools and the privacy request |
 | [`seed.test.ts`](scripts/test/seed.test.ts) | Writing and re-writing the Confluence pages, and reading them back |
+| [`graph.test.ts`](scripts/test/graph.test.ts) | The Teamwork Graph sync: documents, permissions, ticket links, rejections |
 
-The tests load [`helpers.ts`](scripts/test/helpers.ts) first, which swaps `@forge/kvs`, `@forge/api` and `@forge/llm` for in-memory fakes. The code under test is the real code, unmodified. They do not measure the live model: for that, use the **Evaluation** tab.
+The tests load [`helpers.ts`](scripts/test/helpers.ts) first, which swaps `@forge/kvs`, `@forge/api`, `@forge/llm` and `@forge/teamwork-graph` for in-memory fakes. The code under test is the real code, unmodified. They do not measure the live model: for that, use the **Evaluation** tab.
 
 Related docs: [docs/FORGE.md](docs/FORGE.md) (every module, scope and API), [docs/STORAGE_DECISION.md](docs/STORAGE_DECISION.md), [docs/COSTS.md](docs/COSTS.md), [docs/DEVPOST.md](docs/DEVPOST.md), [docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md).
 

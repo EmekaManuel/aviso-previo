@@ -14,7 +14,8 @@
     "@forge/api": "^8.5.0",
     "@forge/kvs": "^2.1.2",
     "@forge/llm": "^1.0.10",
-    "@forge/resolver": "^2.0.2"
+    "@forge/resolver": "^2.0.2",
+    "@forge/teamwork-graph": "^5.4.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

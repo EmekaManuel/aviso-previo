@@ -23,6 +23,8 @@ export interface HoldDecision {
   longestNoticeDays: number;
   longestNoticeCustomer: string;
   affectedCustomers: number;
+  /** Ids of the contracts the hold binds (used to relate contracts to tickets in the Teamwork Graph). */
+  affectedIds: string[];
   terminationRightsCount: number;
   terminationCustomers: string[];
   locationConflictsCount: number;
@@ -67,6 +69,7 @@ export function evaluateHold(input: HoldInput): HoldDecision {
     longestNoticeDays: 0,
     longestNoticeCustomer: '',
     affectedCustomers: 0,
+    affectedIds: [],
     terminationRightsCount: 0,
     terminationCustomers: [],
     locationConflictsCount: 0,
@@ -115,6 +118,7 @@ export function evaluateHold(input: HoldInput): HoldDecision {
     longestNoticeDays: calc.longestNoticeDays,
     longestNoticeCustomer: calc.longestNoticeCustomer,
     affectedCustomers: affected.length,
+    affectedIds: affected.map((t) => t.id),
     terminationRightsCount: calc.customersWithTermination.length,
     terminationCustomers: calc.customersWithTermination,
     locationConflictsCount: calc.customersWithLocationConflicts.length,

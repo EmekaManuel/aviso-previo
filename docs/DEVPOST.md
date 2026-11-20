@@ -2,7 +2,7 @@
 
 **Subtitle**: Automated Customer DPA Subprocessor Notice Governance & Release Holds for Jira & Confluence  
 **Category**: Apps for Business Teams (Legal / Privacy / Compliance)  
-**Bonus Prize**: Best app with Atlassian MCP (`rovo:mcp`, three tools). The Rovo `action` modules may also suit Best Agents; no `rovo:agent` module is enabled.  
+**Bonus Prizes**: Best Agents (`rovo:agent` with three reusable `action` modules), Best app with Atlassian MCP (`rovo:mcp`), and Best apps with Teamwork Graph integration (`graph:connector`).  
 
 ---
 
@@ -54,8 +54,11 @@ Dates are plain TypeScript: calendar days, business days that skip weekends, UTC
 ### 6. Customer notice and privacy request
 The panel drafts a customer notice from the ticket and the contracts. **Notify privacy counsel** creates a Jira request in project `PRIV` if it exists, or in the ticket's own project, and shows its real key. If Jira refuses, it says so and does not invent a key.
 
-### 7. Rovo MCP tools
-Through `rovo:mcp` and Rovo `action` modules, an agent can run `check-subprocessor-commitments` (what would adding this vendor commit us to), `explain-customer-term` (the verbatim clause for a customer) and `open-privacy-notice-request`.
+### 7. A Rovo agent and MCP tools
+An **Aviso Previo** Rovo agent, with a bounded prompt that makes it use its tools for every contract fact, can run `check-subprocessor-commitments` (what would adding this vendor commit us to), `explain-customer-term` (the verbatim clause for a customer) and `open-privacy-notice-request`. The same tools are exposed through `rovo:mcp` for other agents and clients.
+
+### 8. Contracts and tickets in the Teamwork Graph
+A `graph:connector` ingests each customer DPA as an `atlassian:document` and associates it with the Jira issues whose release hold it binds. Contracts and work are then connected in the graph, so Rovo can answer which contracts a ticket touches and which tickets a contract constrains. An admin connects it once; the admin page shows the last sync.
 
 ---
 
@@ -66,7 +69,7 @@ Built on **Atlassian Forge**:
 - **`@forge/kvs`** for the register and ticket decisions.
 - **`@forge/llm`** (Claude) for ticket classification and contract extraction.
 - **Confluence REST v2** to write and read the contract pages, and **Jira REST** to read tickets and create privacy requests.
-- **`jira:workflowValidator`** for the release hold, and **`rovo:mcp`** for the agent tools.
+- **`jira:workflowValidator`** for the release hold, **`rovo:agent`** and **`rovo:mcp`** for agents, and **`graph:connector`** with `@forge/teamwork-graph` for the Teamwork Graph.
 
 One function, `assessIssue`, assesses a ticket. The issue panel, the validator, the Rovo tools and the privacy request all call it, so they cannot disagree.
 
@@ -74,7 +77,7 @@ One function, `assessIssue`, assesses a ticket. The issue panel, the validator, 
 
 ## Evaluation and tests
 
-- **50 automated tests** run the real modules against fake Jira, Confluence, storage and model: the date engine, the hold policy (only confirmed terms count; fails closed), the validator on arbitrary ticket keys, the classifier and its fallback, the extractor's verbatim check and scoring, the Rovo tools, and the Confluence seeding.
+- **60 automated tests** run the real modules against fake Jira, Confluence, storage and model: the date engine, the hold policy (only confirmed terms count; fails closed), the validator on arbitrary ticket keys, the classifier and its fallback, the extractor's verbatim check and scoring, the Rovo tools, and the Confluence seeding.
 - **The Evaluation tab** has the model read all 41 contracts from their Confluence pages and scores every answer against the label each sample contract was written with, counting a confident wrong answer as a failure. Run it in the app to get live figures; they are not claimed here until recorded.
 - **The rule fallback** gets 28 of 30 labelled tickets right and finds all 8 new subprocessors. It was tuned while looking at that set, so treat it as optimistic.
 

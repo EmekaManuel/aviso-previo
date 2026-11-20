@@ -6,6 +6,7 @@ import { assessIssue } from '../assessment/assessIssue';
 import { createOrFetchLegalRequest } from '../legal/legalRequest';
 import { loadRegister, loadVendors, saveDpa } from '../storage/register';
 import { getPageText } from '../confluence/pages';
+import { getGraphStatus, syncContractsToGraph } from '../graph/contractGraph';
 import { extractDPATerms, ExtractedDPATerms } from '../extraction/extractor';
 import { scoreContract } from '../evaluation/scoring';
 import type { DpaRecord } from '../types';
@@ -53,7 +54,9 @@ resolver.define('overrideIssueDecision', async (req) => {
 /** Admin: one step of loading the sample company (storage, Jira, then Confluence in batches). */
 resolver.define('seedStep', async (req) => {
   const { step, offset } = req.payload as { step: SeedStep; offset?: number };
-  return runSeedStep(step, offset ?? 0);
+  const result = await runSeedStep(step, offset ?? 0);
+  if (result.done && step === 'confluence') await syncContractsToGraph().catch(() => null);
+  return result;
 });
 
 /** Admin: the register as it stands. */
@@ -73,6 +76,7 @@ resolver.define('confirmDPA', async (req) => {
     throw new Error('This clause is ambiguous. Resolve it with a notice period before confirming.');
   }
   await saveDpa({ ...dpa, status: 'confirmed', confirmedAt: new Date().toISOString(), confirmedBy: actor(req) });
+  await syncContractsToGraph().catch(() => null);
   return { success: true, dpaId };
 });
 
@@ -86,6 +90,7 @@ resolver.define('confirmAllDPAs', async (req) => {
       confirmedCount++;
     }
   }
+  await syncContractsToGraph().catch(() => null);
   return { success: true, confirmedCount };
 });
 
@@ -110,6 +115,7 @@ resolver.define('resolveDPA', async (req) => {
     confirmedAt: new Date().toISOString(),
     confirmedBy: actor(req),
   });
+  await syncContractsToGraph().catch(() => null);
   return { success: true, dpaId };
 });
 
@@ -166,6 +172,7 @@ resolver.define('applyExtraction', async (req) => {
     confirmedBy: null,
     resolvedByCounsel: false,
   });
+  await syncContractsToGraph().catch(() => null);
   return { success: true, status: unclear ? 'unclear' : 'draft' };
 });
 
@@ -195,6 +202,16 @@ resolver.define('runExtractionEvaluation', async (req) => {
   );
 
   return { rows, total: CUSTOMER_DPAS.length, nextOffset: offset + batch.length, done: offset + batch.length >= CUSTOMER_DPAS.length };
+});
+
+/** Teamwork Graph: is the connector connected, and how did the last sync go? */
+resolver.define('getGraphStatus', async () => getGraphStatus());
+
+/** Pushes the register to the Teamwork Graph now. */
+resolver.define('syncGraph', async () => {
+  const status = await syncContractsToGraph();
+  if (!status) throw new Error('Not connected yet. Connect it under Apps > Connected apps > Aviso Previo.');
+  return status;
 });
 
 export const handler = resolver.getDefinitions();

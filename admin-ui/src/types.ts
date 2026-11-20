@@ -67,3 +67,8 @@ export interface ScoreRow {
 }
 
 export interface EvalBatch { rows: ScoreRow[]; total: number; nextOffset: number; done: boolean }
+
+export interface GraphStatus {
+  connected: boolean;
+  lastSync: { at: string; ok: boolean; synced: number; rejected: number; linkedTickets: number; message?: string } | null;
+}

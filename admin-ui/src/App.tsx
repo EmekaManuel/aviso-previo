@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { api, loadSample } from './api';
-import type { AdminState, DPA, ScoreRow } from './types';
+import type { AdminState, DPA, GraphStatus, ScoreRow } from './types';
 import { Overview } from './Overview';
 import { Register } from './Register';
 import { Vendors } from './Vendors';
@@ -23,11 +23,13 @@ export default function App() {
   const [evalRunning, setEvalRunning] = useState(false);
   const [evalFinished, setEvalFinished] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
+  const [graph, setGraph] = useState<GraphStatus | null>(null);
   const [toast, setToast] = useState('');
 
   const say = (m: string) => { setToast(m); window.setTimeout(() => setToast(''), 3200); };
 
   const load = useCallback(async () => {
+    api.getGraphStatus().then(setGraph).catch(() => setGraph(null));
     try { setData(await api.getAdminState()); }
     catch (e) { console.error(e); say('Could not load contracts. Try refreshing.'); }
     finally { setLoading(false); }
@@ -114,6 +116,8 @@ export default function App() {
             onConfirmAll={() => run(api.confirmAll, `${pending} contracts confirmed`)}
             onOpen={(d) => setSelectedId(d.id)}
             onGoRegister={() => setTab('register')}
+            graph={graph}
+            onSyncGraph={() => run(() => api.syncGraph(), 'Synced to the Teamwork Graph')}
           />
         ) : tab === 'register' ? (
           <Register dpas={data.dpas} onOpen={(d) => setSelectedId(d.id)} />
