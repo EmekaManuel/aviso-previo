@@ -274,19 +274,22 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 
 ## Live extraction results
 
-One run of the **Evaluation** tab on a development site, 20 November 2026: Forge LLM (Claude) reading all 41 contracts from their Confluence pages, scored against the label each sample contract was written with.
+The **Evaluation** tab has Forge LLM (Claude) read all 41 contracts from their Confluence pages and scores every answer against the label each sample contract was written with. A confident wrong answer counts as a failure, and an ambiguous clause only counts as right if it is flagged. Two runs on a development site, 20 November 2026:
 
-| Check | Result |
-|---|---|
-| Quoted clause found word for word in the page | **41/41** |
-| Termination rights found | **2/2** |
-| EU/UK-only limits found | **3/3** |
-| Ambiguous clause ("a reasonable period") flagged unclear | **1/1** |
-| Notice period matches the label | 29/41 |
-| Calendar vs. business days matches the label | 29/41 |
-| **Confidently wrong** (certain, and wrong) | **0** |
+| Check | Run 1 | Run 2 (after fixing the sample text) |
+|---|---|---|
+| Quoted clause found word for word | 41/41 | 41/41 |
+| Termination rights found | 2/2 | 2/2 |
+| EU/UK-only limits found | 3/3 | 3/3 |
+| Ambiguous clause ("a reasonable period") flagged unclear | 1/1 | 1/1 |
+| Notice period matches the label | 29/41 | **41/41** |
+| Calendar vs. business days matches the label | 29/41 | **41/41** |
+| Wrong answers (certain, and wrong) | **0** | **0** |
+| Declined to guess | 12 | 0 |
 
-The 12 disagreements all have the same shape: the clause gives a number of days but never says calendar or business days (for example "thirty (30) days prior electronic notice"). The labels assume calendar days; the model declined to assume and read the term as unclear. That is the cautious direction: a person decides, nothing is guessed, and no wrong number reached the register. It also means the sample labels contain an assumption a lawyer would want to confirm. This is a single run on 41 sample contracts the author wrote, so it shows the behaviour, not a general accuracy figure.
+**What happened between the runs.** In run 1, twelve contracts came back as unclear. Their clauses gave a number of days but never said calendar or business days (for example "thirty (30) days prior electronic notice"), while the labels assumed calendar days. The model was right to decline: the sample text was underspecified. I changed those twelve clauses, and one more with the same wording, to say "calendar days", and ran it again. I did not change the labels or the prompt.
+
+**How to read this.** Run 2 is a clean result, but the set is 41 contracts the author wrote, and the data was corrected after the first run. It shows the behaviour (it quotes the clause, it flags what it cannot decide, and no wrong number reached the register), not a general accuracy figure. One more detail: Belfast Digital Commerce had the same unit-less wording as the twelve but was read correctly in run 1, so the model is not perfectly consistent on an ambiguous clause.
 
 ## Tests and verification
 
