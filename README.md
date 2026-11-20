@@ -42,7 +42,7 @@
 5. **Switch the release hold on (one time, about a minute).** Jira only runs a workflow validator once an admin adds it to a transition, so installing the app is not enough. Open the **Engineering** space, then **Space settings**, then **Workflows**. Edit the workflow, click the transition into **Done**, open the **Validate details** tab, choose **Add rule**, pick **Aviso Previo Subprocessor Hold**, then **Update** and **Publish** the workflow. Repeat for any other transition that deploys, such as *Deployed* or *Production*.
 6. Open the ticket *Add session replay to payslip screen using Glimpse*. The first view classifies it and starts the notice clock. The panel shows the release hold, the earliest go-live (60 days after the first assessment), the confirmed contracts it applies to, and the binding clause. The first view classifies it, and **Re-check this ticket** reads it again if its text changes. Try to move it to **Done**: the validator refuses and says why.
 7. Click **View draft customer notice**, then **Notify privacy counsel**. A Jira request is created in project `PRIV` if it exists, otherwise in the ticket's own project, and its real key is shown.
-8. Open *Upgrade ErrorSentry SDK to v8*. The vendor is approved, so the panel says **No action needed** and the transition goes through.
+8. Open *Upgrade ErrorSentry SDK to v8*. The vendor is approved, so the panel says **No action needed** and the transition goes through. Then open *Evaluate Glimpse in sandbox with synthetic data only*: the panel asks someone to **Confirm synthetic data only**, and moving it to Done is blocked until they do, because a wrongly "synthetic" ticket is how real customer data would slip through.
 
 9. **Teamwork Graph (optional, admin, one time).** Open Apps, Connected apps, Aviso Previo, Connections and connect **Aviso Previo Contracts**. The contracts are added to the graph and linked to the tickets you have viewed. The admin overview shows the last sync, and **Sync now** repeats it.
 10. **Rovo agent.** Open Rovo chat, pick the **Aviso Previo** agent and ask *What would adding Glimpse commit us to?* It answers from the register through its tools, never from memory.
@@ -80,7 +80,7 @@ More in [What is real, and what is not](#what-is-real-and-what-is-not).
 
 **For engineers (Jira):**
 
-- An issue panel with five states: new subprocessor, region change, synthetic data only, no action needed, and "contract terms not verified yet".
+- An issue panel with five states: new subprocessor, region change, synthetic data only (a person must confirm it, and it is recorded who), no action needed, and "contract terms not verified yet".
 - The earliest permitted go-live date, the affected customer count, the longest notice, termination rights, region conflicts and the binding clause quote, all from the confirmed register.
 - A draft customer notice, a one-click privacy request, and a human override that records who and why.
 - A workflow validator that stops a held ticket from reaching Done.

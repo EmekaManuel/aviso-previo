@@ -53,6 +53,17 @@ resolver.define('reassessIssue', async (req) => {
   return fresh;
 });
 
+/** A person confirms that a ticket classed as synthetic-data-only involves no customer personal data. */
+resolver.define('confirmSyntheticData', async (req) => {
+  const issueKey = req.context?.extension?.issue?.key;
+  if (!issueKey) throw new Error('This view is not on a Jira issue.');
+  const a = await assessIssue(issueKey);
+  if (a.classification !== 'NO_CUSTOMER_DATA') throw new Error('This ticket is not classed as synthetic-data-only.');
+  const decision = ((await kvs.get(`decision:${issueKey}`)) as any) ?? {};
+  await kvs.set(`decision:${issueKey}`, { ...decision, syntheticConfirmedBy: actor(req), syntheticConfirmedAt: new Date().toISOString() });
+  return assessIssue(issueKey);
+});
+
 /** Opens (or returns) the privacy request for the ticket. */
 resolver.define('createLegalNoticeRequest', async (req) => {
   const { issueKey } = req.payload as { issueKey: string };

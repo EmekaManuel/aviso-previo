@@ -20,6 +20,8 @@ export interface IssueAssessment {
   aiReason?: string;
   sampleClauseCustomer?: string;
   sampleClauseQuote?: string;
+  syntheticConfirmed?: boolean;
+  syntheticConfirmedBy?: string;
   overridden?: boolean;
   overriddenBy?: string;
   overrideReason?: string;

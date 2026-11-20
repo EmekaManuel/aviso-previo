@@ -45,7 +45,7 @@ test('moving work along (In Progress) is never blocked', async () => {
 });
 
 test('unrelated and routine tickets pass', async () => {
-  for (const c of ['UNRELATED', 'EXISTING_VENDOR_NO_CHANGE', 'NO_CUSTOMER_DATA']) {
+  for (const c of ['UNRELATED', 'EXISTING_VENDOR_NO_CHANGE']) {
     reset();
     loadSampleRegister();
     jira.issues.set('ENG-9', { summary: 'x', description: 'y' });
@@ -136,4 +136,22 @@ test('an unidentifiable transition on an unrelated ticket is still allowed', asy
   jira.issues.set('ENG-9', { summary: 'Fix CSS', description: 'padding' });
   classifyAs('UNRELATED', null);
   assert.equal((await validateTransition({ issue: { key: 'ENG-9' }, transition: {} } as any)).result, true);
+});
+
+test('a ticket called synthetic-only is blocked until a person confirms it, then released', async () => {
+  jira.issues.set('ENG-8', { summary: 'Evaluate Glimpse in sandbox', description: 'synthetic data only' });
+  classifyAs('NO_CUSTOMER_DATA', 'Glimpse', 'UNKNOWN');
+  const blocked = await validateTransition(toDone('ENG-8'));
+  assert.equal(blocked.result, false);
+  assert.match(blocked.errorMessage!, /confirm that no customer personal data/);
+  store.set('decision:ENG-8', { ...store.get('decision:ENG-8'), syntheticConfirmedBy: 'Counsel (abc)', syntheticConfirmedAt: new Date().toISOString() });
+  assert.equal((await validateTransition(toDone('ENG-8'))).result, true);
+});
+
+test('a counsel override also releases a synthetic-only ticket', async () => {
+  jira.issues.set('ENG-8', { summary: 'Evaluate Glimpse in sandbox', description: 'synthetic data only' });
+  classifyAs('NO_CUSTOMER_DATA', 'Glimpse', 'UNKNOWN');
+  await validateTransition(toDone('ENG-8'));
+  store.set('decision:ENG-8', { ...store.get('decision:ENG-8'), overridden: true, overrideReason: 'checked' });
+  assert.equal((await validateTransition(toDone('ENG-8'))).result, true);
 });

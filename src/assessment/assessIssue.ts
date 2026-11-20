@@ -22,6 +22,9 @@ export interface DecisionRecord {
   overriddenBy?: string;
   overrideReason?: string;
   overriddenAt?: string;
+  /** For a ticket classified as synthetic-data-only: who confirmed that no customer data is involved. */
+  syntheticConfirmedBy?: string;
+  syntheticConfirmedAt?: string;
 }
 
 export interface IssueAssessment {
@@ -51,6 +54,8 @@ export interface IssueAssessment {
   overridden?: boolean;
   overriddenBy?: string;
   overrideReason?: string;
+  syntheticConfirmed: boolean;
+  syntheticConfirmedBy?: string;
 }
 
 /** Atlassian Document Format to plain text. */
@@ -97,6 +102,8 @@ async function loadOrCreateDecision(issueKey: string, now: Date): Promise<Decisi
       overriddenBy: stored.overriddenBy,
       overrideReason: stored.overrideReason,
       overriddenAt: stored.overriddenAt,
+      syntheticConfirmedBy: stored.syntheticConfirmedBy,
+      syntheticConfirmedAt: stored.syntheticConfirmedAt,
     };
     if (!stored.noticeStartedAt || !stored.hostingRegion) await kvs.set(`decision:${issueKey}`, decision);
     await indexDecision(issueKey);
@@ -181,5 +188,7 @@ export async function assessIssue(issueKey: string, now: Date = new Date()): Pro
     overridden: decision.overridden,
     overriddenBy: decision.overriddenBy,
     overrideReason: decision.overrideReason,
+    syntheticConfirmed: Boolean(decision.syntheticConfirmedBy),
+    syntheticConfirmedBy: decision.syntheticConfirmedBy,
   };
 }

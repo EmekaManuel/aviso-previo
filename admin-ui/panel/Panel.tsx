@@ -28,7 +28,6 @@ export default function Panel() {
   const [overriding, setOverriding] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   const [note, setNote] = useState('');
   const [rechecking, setRechecking] = useState(false);
 
@@ -89,14 +88,26 @@ export default function Panel() {
 
   // ── Synthetic data ────────────────────────────
   if (a.classification === 'NO_CUSTOMER_DATA') {
+    const done = Boolean(a.syntheticConfirmed);
+    const confirmSynthetic = async () => {
+      setBusy(true);
+      setNote('');
+      try { setA(await api.confirmSynthetic()); }
+      catch (e: any) { setNote(e?.message || 'Could not record the confirmation.'); }
+      finally { setBusy(false); }
+    };
     return (
       <div className="panel">
         <div className="section">
-          <span className={`pill ${confirmed ? 'ok' : 'warn'}`}>{confirmed ? 'Confirmed' : 'Confirmation needed'}</span>
+          <span className={`pill ${done ? 'ok' : 'warn'}`}>{done ? 'Confirmed: no customer data' : 'Confirmation needed'}</span>
           <h2>{vendor} in a test environment</h2>
-          <p className="muted">This ticket describes {vendor} running on staging or synthetic data only. If no customer personal data is processed, no notice is required.</p>
-          {!confirmed && <div className="actions"><button className="btn btn-primary" onClick={() => setConfirmed(true)}>Confirm synthetic data only</button></div>}
+          <p className="muted">
+            This ticket describes {vendor} running on staging or synthetic data only. If no customer personal data is processed, no notice is required.
+            {done ? ` Confirmed by ${a.syntheticConfirmedBy ?? 'a team member'}.` : ' The release stays blocked until someone confirms that.'}
+          </p>
+          {!done && <div className="actions"><button className="btn btn-primary" onClick={confirmSynthetic} disabled={busy}>{busy ? 'Saving…' : 'Confirm synthetic data only'}</button></div>}
         </div>
+        {note && <p className="caption" role="alert">{note}</p>}
         <FootR />
       </div>
     );

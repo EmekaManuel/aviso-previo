@@ -24,6 +24,7 @@ const MOCKS: Record<string, IssueAssessment> = {
 export const api = {
   getAssessment: async (): Promise<IssueAssessment> =>
     inForge ? call<IssueAssessment>('getIssueAssessment') : MOCKS[location.hash.slice(1)] ?? MOCKS.new,
+  confirmSynthetic: async (): Promise<IssueAssessment> => (inForge ? call<IssueAssessment>('confirmSyntheticData') : { ...MOCKS.synthetic, syntheticConfirmed: true, syntheticConfirmedBy: 'Counsel' }),
   reassess: async (): Promise<IssueAssessment> => (inForge ? call<IssueAssessment>('reassessIssue') : MOCKS[location.hash.slice(1)] ?? MOCKS.new),
   createRequest: async (p: { issueKey: string }): Promise<{ requestKey?: string }> =>
     inForge ? call('createLegalNoticeRequest', p) : { requestKey: 'PRIV-18' },

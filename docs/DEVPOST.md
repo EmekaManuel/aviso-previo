@@ -44,7 +44,7 @@ Using Forge's hosted `@forge/llm` API (Claude), Aviso Previo reads a customer DP
 Counsel review each contract in the admin workspace with the extracted terms beside the clause. **Read with Claude** re-reads the Confluence page and compares field by field. An ambiguous clause is resolved by counsel entering the period they read; a button cannot confirm it.
 
 ### 2. Ticket reading
-When a ticket is viewed or moved, `@forge/llm` classifies it as a new subprocessor, a location change, synthetic data only, routine work on an approved vendor, or unrelated, and notes where the vendor will process the data. If the model cannot be used, cautious rules take over and lean towards flagging a possible new subprocessor rather than missing one.
+When a ticket is viewed or moved, `@forge/llm` classifies it as a new subprocessor, a location change, synthetic data only, routine work on an approved vendor, or unrelated, and notes where the vendor will process the data. A ticket called "synthetic data only" is released only after a person confirms it, and the confirmation is recorded, because a wrong "synthetic" is the mistake that would let real data through. If the model cannot be used, cautious rules take over and lean towards flagging a possible new subprocessor rather than missing one.
 
 ### 3. A quiet issue panel
 On a ticket that triggers an obligation, the panel shows the earliest permitted go-live, the number of confirmed contracts affected, the longest notice, termination rights, region conflicts and the binding clause. If counsel have not confirmed any terms yet, it says so and the release stays blocked.

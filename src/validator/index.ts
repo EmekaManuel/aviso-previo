@@ -100,6 +100,15 @@ export async function validateTransition(payload: ValidatorPayload): Promise<Val
       console.log(`[Aviso Previo] ${issueKey} released by counsel override: ${a.overrideReason}`);
       return { result: true };
     }
+    // A ticket called "synthetic data only" is only released once a person has confirmed it:
+    // a wrong "synthetic" is the one mistake that would let real customer data through unnoticed.
+    if (a.classification === 'NO_CUSTOMER_DATA' && !a.syntheticConfirmed) {
+      console.log(`[Aviso Previo] ${issueKey} -> "${label}": synthetic data not yet confirmed, BLOCKED`);
+      return {
+        result: false,
+        errorMessage: `Aviso Previo: ${issueKey} mentions ${a.vendor ?? 'a third-party tool'} but is described as using synthetic data only. Open the Aviso Previo panel and confirm that no customer personal data is involved before releasing.`,
+      };
+    }
     const block = a.holdApplies && a.holdActive;
     console.log(`[Aviso Previo] ${issueKey} -> "${label}": ${a.classification}, hold applies=${a.holdApplies}, active=${a.holdActive}, ${block ? 'BLOCKED' : 'allowed'}`);
     if (block) return { result: false, errorMessage: holdMessage(a) };

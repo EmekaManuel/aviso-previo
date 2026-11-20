@@ -44,3 +44,27 @@ test('re-checking does not restart a notice clock that is already running', asyn
 test('re-checking outside a Jira issue is an error', async () => {
   await assert.rejects(() => handler.reassessIssue({ context: {} }), /not on a Jira issue/);
 });
+
+test('confirming synthetic data is recorded with who confirmed it, and only on a synthetic ticket', async () => {
+  llm.handler = () => reply({ classification: 'NO_CUSTOMER_DATA', vendor: 'Glimpse', hostingRegion: 'UNKNOWN', touchesCustomerData: false, reasoning: 'ok' });
+  const before = await assessIssue('ENG-1');
+  assert.equal(before.syntheticConfirmed, false);
+  const after = await handler.confirmSyntheticData(req);
+  assert.equal(after.syntheticConfirmed, true);
+  assert.match(after.syntheticConfirmedBy, /Counsel/);
+  assert.ok(store.get('decision:ENG-1').syntheticConfirmedAt);
+
+  reset();
+  loadSampleRegister();
+  jira.issues.set('ENG-1', { summary: 'x', description: 'y' });
+  llm.handler = glimpse;
+  await assert.rejects(() => handler.confirmSyntheticData(req), /not classed as synthetic-data-only/);
+});
+
+test('re-checking clears a synthetic confirmation, so a changed ticket must be confirmed again', async () => {
+  llm.handler = () => reply({ classification: 'NO_CUSTOMER_DATA', vendor: 'Glimpse', hostingRegion: 'UNKNOWN', touchesCustomerData: false, reasoning: 'ok' });
+  await assessIssue('ENG-1');
+  await handler.confirmSyntheticData(req);
+  const fresh = await handler.reassessIssue(req);
+  assert.equal(fresh.syntheticConfirmed, false);
+});
