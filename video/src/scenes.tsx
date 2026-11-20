@@ -260,7 +260,7 @@ const PIPE: [string, string][] = [['Confluence page', 'The contract, as written'
 export const Evidence: React.FC = () => {
   const f = useCurrentFrame();
   const b = (k: string, n = 0, o = 0) => beat('evidence', k, n, o);
-  const tMeas = b('measured'), tClaude = b('claude'), tScored = b('scored'), tDecl = b('declined'), tNever = b('never'), tFixed = b('fixed'), tZero = b('zero'), tPoint = b('point');
+  const tMeas = b('measured'), tClaude = b('claude'), tScored = b('scored'), tDecl = b('declined'), tFixed = b('fixed'), tZero = b('zero'), tPoint = b('point');
   const pipeOut = 1 - p(f, tDecl - 34, 14);
   const final = p(f, tPoint - 10, 22);
   return (
@@ -293,13 +293,10 @@ export const Evidence: React.FC = () => {
       </div>
       <Frame left={310} top={150} width={1300} ar={2240 / 1000} at={tDecl - 30} kind="live" label="Aviso Previo Admin · Evaluation" drift={0.02}
         stack={[{ src: 'live/eval-run1.png', at: 0 }, { src: 'live/eval-run2.png', at: tFixed - 8 }]}>
-        <Ring box={[84, 36, 13.5, 17]} at={tDecl} label="Notice 29 / 41" side="left" color={C.amber} hideAt={tFixed - 10} />
+        <Ring box={[84, 36, 13.5, 17]} at={tDecl} color={C.amber} hideAt={tFixed - 10} />
         <Ring box={[77, 29.5, 19.5, 6.5]} at={tDecl + 22} label="12 declined" side="left" color={C.amber} hideAt={tFixed - 10} />
         <Ring box={[7.5, 37, 41, 6.5]} at={tZero} label="0 wrong" side="right" />
       </Frame>
-      <Reveal at={tNever} dy={14} style={{ position: 'absolute', left: 310, top: 820, width: 1300, textAlign: 'center', fontSize: 30, color: C.sub, opacity: 1 - p(f, tFixed - 10, 10) }}>
-        The clauses never said calendar or business days, so the model refused to guess.
-      </Reveal>
       <div style={{ position: 'absolute', left: 310, top: 800, width: 1300, display: 'flex', gap: 24, opacity: p(f, tZero, 18) * (1 - final) }}>
         {[['41/41', 'notice period and unit'], ['0', 'confident wrong answers'], ['41/41', 'clauses quoted word for word']].map(([n, l]) => (
           <Card key={l} style={{ flex: 1, padding: '14px 24px', display: 'flex', alignItems: 'baseline', gap: 16 }}>
@@ -325,10 +322,10 @@ export const Agents: React.FC = () => {
       <Sfx at={0} src="audio/whoosh.wav" volume={0.2} />
       <Chapter n="06" title="FOR TEAMS AND AGENTS" />
       <Frame left={130} top={100} width={404} pad={12} ar={892 / 1668} at={tAsk} kind="live" label="Rovo chat" stack={[{ src: 'live/agent-glimpse.png', at: 0 }]} drift={0.02}>
-        <Ring box={[4, 33, 92, 41]} at={tCommit} label="From the register" side="right" />
+        <Ring box={[4, 33, 92, 41]} at={tCommit} />
       </Frame>
       <Frame left={578} top={100} width={374} pad={12} ar={790 / 1588} at={tAmb - 8} kind="live" label="Same agent" stack={[{ src: 'live/agent-apex.png', at: 0 }]} drift={0.02}>
-        <Ring box={[6, 57, 88, 12]} at={tDecide} label="No number" side="right" color={C.amber} />
+        <Ring box={[6, 57, 88, 12]} at={tDecide} color={C.amber} />
       </Frame>
       {/* the graph */}
       <Reveal at={tGraph - 6} dy={14} style={{ position: 'absolute', left: 1050, top: 96, width: 700, textAlign: 'center', fontSize: 28, fontWeight: 600, color: C.sub, letterSpacing: '0.04em' }}>Every contract, added to the Teamwork Graph</Reveal>

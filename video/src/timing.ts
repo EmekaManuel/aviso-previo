@@ -55,7 +55,16 @@ export function captionChunks(id: string): Word[][] {
   const s = SCENES.find((x) => x.id === id)!;
   const chunks: Word[][] = [];
   let cur: Word[] = [];
-  for (const w of s.words) {
+  // The narration spells acronyms out for the voice ("M C P"); show them as written text ("MCP").
+  const shown: Word[] = [];
+  for (let i = 0; i < s.words.length; i++) {
+    const a = s.words[i], b = s.words[i + 1], c = s.words[i + 2];
+    if (a.w === 'M' && b?.w === 'C' && c && /^P/.test(c.w)) {
+      shown.push({ w: 'MCP' + c.w.slice(1), start: a.start, end: c.end });
+      i += 2;
+    } else shown.push(a);
+  }
+  for (const w of shown) {
     cur.push(w);
     if (/[.?!:]$/.test(w.w) || cur.length >= 11) { chunks.push(cur); cur = []; }
   }
