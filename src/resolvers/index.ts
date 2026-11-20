@@ -248,7 +248,7 @@ resolver.define('getGraphStatus', async () => getGraphStatus());
 /** Pushes the register to the Teamwork Graph now. */
 resolver.define('syncGraph', async () => {
   const status = await syncContractsToGraph();
-  if (!status) throw new Error('Not connected yet. Connect it under Apps > Connected apps > Aviso Previo.');
+  if (!status) throw new Error('Not connected yet. An admin adds it at admin.atlassian.com under Connectors (Aviso Previo Contracts, Add connector).');
   return status;
 });
 

@@ -44,7 +44,7 @@
 7. Click **View draft customer notice**, then **Notify privacy counsel**. A Jira request is created in project `PRIV` if it exists, otherwise in the ticket's own project, and its real key is shown.
 8. Open *Upgrade ErrorSentry SDK to v8*. The vendor is approved, so the panel says **No action needed** and the transition goes through. Then open *Evaluate Glimpse in sandbox with synthetic data only*: the panel asks someone to **Confirm synthetic data only**, and moving it to Done is blocked until they do, because a wrongly "synthetic" ticket is how real customer data would slip through.
 
-9. **Teamwork Graph (optional, admin, one time).** Open Apps, Connected apps, Aviso Previo, Connections and connect **Aviso Previo Contracts**. The contracts are added to the graph and linked to the tickets you have viewed. The admin overview shows the last sync, and **Sync now** repeats it.
+9. **Teamwork Graph (optional, admin, one time).** Open admin.atlassian.com, then **Connectors**, find **Aviso Previo Contracts** and click **Add connector**. The contracts are added to the graph and linked to the tickets you have viewed. The admin overview shows the last sync, and **Sync now** repeats it.
 10. **Rovo agent.** Open Rovo chat, pick the **Aviso Previo** agent and ask *What would adding Glimpse commit us to?* It answers from the register through its tools, never from memory.
 
 **Atlassian, concretely.**

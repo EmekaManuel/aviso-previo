@@ -151,7 +151,7 @@ export function Overview({ data, busy, onSeed, onConfirmAll, onOpen, onGoRegiste
         </div>
         <div style={{ marginTop: 14 }}>
           {!graph ? null : !graph.connected ? (
-            <p className="muted" style={{ margin: 0 }}>Not connected. An admin connects it once under Apps, Connected apps, Aviso Previo, Connections.</p>
+            <p className="muted" style={{ margin: 0 }}>Not connected. An admin connects it once at admin.atlassian.com, under Connectors: find Aviso Previo Contracts and click Add connector.</p>
           ) : graph.lastSync ? (
             <span className={`pill ${graph.lastSync.ok ? 'ok' : 'warn'}`}>
               {graph.lastSync.ok

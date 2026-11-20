@@ -28,7 +28,7 @@ An installation link needs a production deployment, then one switch in the devel
 2. Open the [developer console](https://developer.atlassian.com/console/myapps), choose the app, then **Distribution**.
 3. Edit the distribution controls, switch **Sharing** on, choose the products the link supports (Jira and Confluence), and copy the link.
 4. Paste the link into the README (the TODO under the badges), into "Try it", and into the Devpost form.
-5. Give the judges these steps with it: install on a site where you are admin, open **Aviso Previo Admin**, click **Load sample data**, and then follow [Try it](../README.md#try-it). Connecting the Teamwork Graph connector is optional (Apps, Connected apps, Aviso Previo, Connections).
+5. Give the judges these steps with it: install on a site where you are admin, open **Aviso Previo Admin**, click **Load sample data**, and then follow [Try it](../README.md#try-it). Connecting the Teamwork Graph connector is optional (admin.atlassian.com, Connectors, Aviso Previo Contracts, Add connector).
 
 Notes from the Atlassian docs:
 - Anyone installing must be an admin of the site.
