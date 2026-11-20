@@ -8,7 +8,7 @@
 
 [Install on your site](https://developer.atlassian.com/console/install/2bd1fd88-a709-4b4c-bf65-fcdac4a24bf8?signature=AYABeLUHU4ahZoGHIOJ0r0vjh50AAAADAAdhd3Mta21zAEthcm46YXdzOmttczp1cy13ZXN0LTI6NzA5NTg3ODM1MjQzOmtleS83MDVlZDY3MC1mNTdjLTQxYjUtOWY5Yi1lM2YyZGNjMTQ2ZTcAuAECAQB4CxqLTo9l4lqXuFjNim1xJM%2Bp%2F3TVP9xHS2BrU5DRRucBjEbcYr6NAMgXvnMTKf%2BjxAAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDG6mCC1KXa2Cjzn4jwIBEIA7wqYN%2FtV7KPnoNrRdx06LX5zzlqPUXoJfNXyhY72HMk6Pv2eaMoMbJXn34gngnF6%2B%2FOidetYd3XTsIKoAB2F3cy1rbXMAS2Fybjphd3M6a21zOmV1LXdlc3QtMTo3MDk1ODc4MzUyNDM6a2V5LzQ2MzBjZTZiLTAwYzMtNGRlMi04NzdiLTYyN2UyMDYwZTVjYwC4AQICAHi9bVMAkme4qVQX1fQHo6ePw3H40A7cGfz7yrmSfBWMXgGJJ2SbwZVcuscjb58ucVVxAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiqQfn2V3HIzGV58oAgEQgDt9PjE%2FTZVF78j1YdrT%2BEJV26zcpfqejZwCyZngk5vUmOVYXRCp1TlIUvPtKAfm9YHFLxi%2FZ6E%2FBBMfTAAHYXdzLWttcwBLYXJuOmF3czprbXM6dXMtZWFzdC0xOjcwOTU4NzgzNTI0MzprZXkvNmMxMjBiYTAtNGNkNS00OTg1LWI4MmUtNDBhMDQ5NTJjYzU3ALgBAgIAeDYASx0XCjkny4iLV6vz%2BKtEGSGT6kdt0QRpkn6D%2FlVEAYgk8cTtdUagw1Ky3V4vtNEAAAB%2BMHwGCSqGSIb3DQEHBqBvMG0CAQAwaAYJKoZIhvcNAQcBMB4GCWCGSAFlAwQBLjARBAyJv1%2FH72R2PeeZgRkCARCAO53Ri2b0kpeU2KgE0Wxg7CtJnlEsfuPuHLAUec0tBnxsIL9VKc6tcproKa6NlC3FAZktoPWKaWU07RUIAgAAAAAMAAAQAAAAAAAAAAAAAAAAAAwyfomJjVkLUPbxoD%2B%2BDUb%2F%2F%2F%2F%2FAAAAAQAAAAAAAAAAAAAAAQAAADLBjgKUUpK0nOlzuLI49e432DE7NxlCo7w6Gleyo6wxyeI5SAK9YSShv1eKXMk1g%2Be8HgqjeeiMC6h4QrdEqwxW278%3D&product=confluence&product=jira) · [Walkthrough](#try-it) · [How it works](#how-it-works) · [What is real, and what is not](#what-is-real-and-what-is-not) · [Docs](docs/)
 
-![Forge](https://img.shields.io/badge/Atlassian-Forge-0052CC) ![Jira](https://img.shields.io/badge/Jira-workflow%20validator-0052CC) ![Confluence](https://img.shields.io/badge/Confluence-contract%20pages-0052CC) ![Rovo](https://img.shields.io/badge/Rovo-agent%20%2B%20MCP-6554C0) ![Teamwork Graph](https://img.shields.io/badge/Teamwork%20Graph-connector-0052CC) ![tests](https://img.shields.io/badge/tests-60%20passing-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
+![Forge](https://img.shields.io/badge/Atlassian-Forge-0052CC) ![Jira](https://img.shields.io/badge/Jira-workflow%20validator-0052CC) ![Confluence](https://img.shields.io/badge/Confluence-contract%20pages-0052CC) ![Rovo](https://img.shields.io/badge/Rovo-agent%20%2B%20MCP-6554C0) ![Teamwork Graph](https://img.shields.io/badge/Teamwork%20Graph-connector-0052CC) ![tests](https://img.shields.io/badge/tests-92%20passing-brightgreen) ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)
 
 </div>
 
@@ -18,12 +18,12 @@
 
 **The problem.** B2B SaaS companies promise enterprise customers 30 to 60 days of written notice before they add a subprocessor or move data out of a region. Engineering finds out about a vendor in a ticket on Monday and ships on Friday. Legal finds out afterwards. One missed notice can be a breach of dozens of contracts, and a few customers can terminate over it. The knowledge needed to prevent this exists, but it sits in contracts in one tool and in tickets in another.
 
-**The idea: a model reads, code decides.** The model has two jobs. It reads a ticket and says what kind of change it is: new vendor, region change, synthetic data only, routine, or unrelated ([`ticketClassifier.ts#L100`](src/classification/ticketClassifier.ts#L83)). And it reads a contract's Confluence page and quotes the subprocessor clause with its terms ([`extractor.ts#L53`](src/extraction/extractor.ts#L48)). Everything with legal weight is plain TypeScript:
+**The idea: a model reads, code decides.** The model has two jobs. It reads a ticket and says what kind of change it is: new vendor, region change, synthetic data only, routine, or unrelated ([`ticketClassifier.ts#L101`](src/classification/ticketClassifier.ts#L101)). And it reads a contract's Confluence page and quotes the subprocessor clause with its terms ([`extractor.ts#L54`](src/extraction/extractor.ts#L54)). Everything with legal weight is plain TypeScript:
 
 - The notice date is arithmetic over the contract terms, with calendar and business days handled separately ([`dateCalculator.ts`](src/engine/dateCalculator.ts)).
 - Whether a hold applies is one pure function, [`evaluateHold`](src/engine/holdPolicy.ts). Only terms that counsel has **confirmed** count toward the date. If nothing is confirmed, the release is blocked, never allowed.
 - The workflow validator and the issue panel both call the same [`assessIssue`](src/assessment/assessIssue.ts), so they cannot disagree. There are no ticket-specific branches.
-- A vague clause such as "a reasonable period" is never turned into a number: the prompt forces it to `unclear`, and only a person can resolve it ([`extractor.ts#L30`](src/extraction/extractor.ts#L25)).
+- A vague clause such as "a reasonable period" is never turned into a number: the prompt forces it to `unclear`, and only a person can resolve it ([`extractor.ts#L31`](src/extraction/extractor.ts#L31)).
 - A clause the model quotes must be found word for word in the contract page, or it is rejected ([`text.ts`](src/extraction/text.ts)).
 - If the model call fails, the classifier falls back to cautious rules instead of failing open ([`ticketClassifier.ts`](src/classification/ticketClassifier.ts)).
 
@@ -35,17 +35,16 @@
 
 **Try it.** [Install Aviso Previo](https://developer.atlassian.com/console/install/2bd1fd88-a709-4b4c-bf65-fcdac4a24bf8?signature=AYABeLUHU4ahZoGHIOJ0r0vjh50AAAADAAdhd3Mta21zAEthcm46YXdzOmttczp1cy13ZXN0LTI6NzA5NTg3ODM1MjQzOmtleS83MDVlZDY3MC1mNTdjLTQxYjUtOWY5Yi1lM2YyZGNjMTQ2ZTcAuAECAQB4CxqLTo9l4lqXuFjNim1xJM%2Bp%2F3TVP9xHS2BrU5DRRucBjEbcYr6NAMgXvnMTKf%2BjxAAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDG6mCC1KXa2Cjzn4jwIBEIA7wqYN%2FtV7KPnoNrRdx06LX5zzlqPUXoJfNXyhY72HMk6Pv2eaMoMbJXn34gngnF6%2B%2FOidetYd3XTsIKoAB2F3cy1rbXMAS2Fybjphd3M6a21zOmV1LXdlc3QtMTo3MDk1ODc4MzUyNDM6a2V5LzQ2MzBjZTZiLTAwYzMtNGRlMi04NzdiLTYyN2UyMDYwZTVjYwC4AQICAHi9bVMAkme4qVQX1fQHo6ePw3H40A7cGfz7yrmSfBWMXgGJJ2SbwZVcuscjb58ucVVxAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiqQfn2V3HIzGV58oAgEQgDt9PjE%2FTZVF78j1YdrT%2BEJV26zcpfqejZwCyZngk5vUmOVYXRCp1TlIUvPtKAfm9YHFLxi%2FZ6E%2FBBMfTAAHYXdzLWttcwBLYXJuOmF3czprbXM6dXMtZWFzdC0xOjcwOTU4NzgzNTI0MzprZXkvNmMxMjBiYTAtNGNkNS00OTg1LWI4MmUtNDBhMDQ5NTJjYzU3ALgBAgIAeDYASx0XCjkny4iLV6vz%2BKtEGSGT6kdt0QRpkn6D%2FlVEAYgk8cTtdUagw1Ky3V4vtNEAAAB%2BMHwGCSqGSIb3DQEHBqBvMG0CAQAwaAYJKoZIhvcNAQcBMB4GCWCGSAFlAwQBLjARBAyJv1%2FH72R2PeeZgRkCARCAO53Ri2b0kpeU2KgE0Wxg7CtJnlEsfuPuHLAUec0tBnxsIL9VKc6tcproKa6NlC3FAZktoPWKaWU07RUIAgAAAAAMAAAQAAAAAAAAAAAAAAAAAAwyfomJjVkLUPbxoD%2B%2BDUb%2F%2F%2F%2F%2FAAAAAQAAAAAAAAAAAAAAAQAAADLBjgKUUpK0nOlzuLI49e432DE7NxlCo7w6Gleyo6wxyeI5SAK9YSShv1eKXMk1g%2Be8HgqjeeiMC6h4QrdEqwxW278%3D&product=confluence&product=jira) on a Jira and Confluence site where you are an admin, then open **Aviso Previo Admin** (Jira settings, Apps).
 
-1. **Load the sample.** Click **Load sample data**. It runs in steps with progress: it loads the fictional company Ayo Payroll into the register (41 customer DPAs with hand-labelled terms, 40 already confirmed by "counsel" and one ambiguous), creates a Jira project `ENG` with four tickets, and writes all 41 contracts as Confluence pages in a `CONTRACTS` space.
+1. **Load the sample.** Click **Load sample data**. It runs in steps with progress: it loads the fictional company Ayo Payroll into the register (41 customer DPAs with hand-labelled terms, 40 already confirmed by "counsel" and one ambiguous), creates a Jira project `ENG` with four tickets, and writes all 41 contracts as Confluence pages (in a `CONTRACTS` space, or in the first space the app can use if it cannot create one). It also publishes a read-only copy of the register as a Confluence page, so the agent can answer from Confluence too.
 2. Open **Register** and click **Apex Health Services PLC**. Its clause says "a reasonable period", so it shows **Counsel to decide** and no number is guessed. Click **Read with Claude**: the model reads the Confluence page and should agree. Enter a notice period and press **Resolve and confirm** to decide it as counsel.
 3. Open **Nordic Logistics AS** and click **Read with Claude**. The reading is compared with the register field by field, and the quoted clause is checked against the page.
 4. Open **Evaluation** and click **Run evaluation**. The model reads all 41 contracts from Confluence and each answer is scored against its label. This makes 41 Forge LLM calls.
 5. **Switch the release hold on (one time, about a minute).** Jira only runs a workflow validator once an admin adds it to a transition, so installing the app is not enough. Open the **Engineering** space, then **Space settings**, then **Workflows**. Edit the workflow, click the transition into **Done**, open the **Validate details** tab, choose **Add rule**, pick **Aviso Previo Subprocessor Hold**, then **Update** and **Publish** the workflow. Repeat for any other transition that deploys, such as *Deployed* or *Production*.
-6. Open the ticket *Add session replay to payslip screen using Glimpse*. The first view classifies it and starts the notice clock. The panel shows the release hold, the earliest go-live (60 days after the first assessment), the confirmed contracts it applies to, and the binding clause. The first view classifies it, and **Re-check this ticket** reads it again if its text changes. Try to move it to **Done**: the validator refuses and says why.
+6. Open the ticket *Add session replay to payslip screen using Glimpse*. The first view classifies it and starts the notice clock. The panel shows the release hold, the earliest go-live (60 days after the first assessment), the confirmed contracts it applies to, and the binding clause. **Re-check this ticket** reads it again if its text changes. Try to move it to **Done**: the validator refuses and says why.
 7. Click **View draft customer notice**, then **Notify privacy counsel**. A Jira request is created in project `PRIV` if it exists, otherwise in the ticket's own project, and its real key is shown.
 8. Open *Upgrade ErrorSentry SDK to v8*. The vendor is approved, so the panel says **No action needed** and the transition goes through. Then open *Evaluate Glimpse in sandbox with synthetic data only*: the panel asks someone to **Confirm synthetic data only**, and moving it to Done is blocked until they do, because a wrongly "synthetic" ticket is how real customer data would slip through.
-
-9. **Teamwork Graph (optional, admin, one time).** Open admin.atlassian.com, then **Connectors**, find **Aviso Previo Contracts** and click **Add connector**. The contracts are added to the graph and linked to the tickets you have viewed. The admin overview shows the last sync, and **Sync now** repeats it.
-10. **Rovo agent.** In **Jira**, click **Ask Rovo**, pick the **Aviso Previo** agent and ask *What would adding Glimpse commit us to?* It answers from the register through its tools, never from memory.
+9. **Teamwork Graph (optional, admin, one time).** Open admin.atlassian.com, then **Connectors**, find **Aviso Previo Contracts** and click **Add connector**. The site must support Teamwork Graph connectors; a free trial site may not offer it. The contracts are added to the graph and linked to the tickets you have viewed. The admin overview shows the last sync, and **Sync now** repeats it.
+10. **Rovo agent.** In **Jira**, click **Ask Rovo**, pick the **Aviso Previo** agent and ask *What would adding Glimpse commit us to?* It answers from the register through its tools, never from memory. Ask *What does the Apex Health Services DPA say about subprocessors?* and it quotes the clause and says it is unclear. It also answers in Confluence; opening a privacy request needs Jira.
 
 **Atlassian, concretely.**
 - **Jira workflow validator:** blocks release-type transitions on a held ticket and says why, with the date ([`validator/index.ts`](src/validator/index.ts)). A counsel override with a recorded reason lifts the hold. If a ticket cannot be assessed, the transition is blocked.
@@ -58,12 +57,13 @@
 **Honest limits.**
 - **The sample register is seeded with hand-labelled terms.** The model reads a contract from Confluence on demand ("Read with Claude") and in the Evaluation tab. It does not yet watch Confluence and ingest new or edited pages by itself.
 - **The notice clock starts when a ticket is first assessed,** not when the customer notice is actually sent.
-- **One live evaluation run is recorded below.** The tests use a fake model, and the fallback rules score 28/30 on the labelled tickets after being tuned while looking at that set, so treat that number as optimistic.
+- **Two live evaluation runs are recorded below.** The tests use a fake model, and the fallback rules score 28/30 on the labelled tickets after being tuned while looking at that set, so treat that number as optimistic.
 - **The vendor's hosting region comes from the ticket text.** If the ticket does not say, the region is treated as outside the EU/UK.
 - **The workflow validator may call the model.** The first assessment of an unseen ticket reads it from Jira and classifies it; later checks use the stored decision.
-- **Rovo and MCP tools are tested directly,** not through a live Rovo or external MCP client. The Rovo agent is deployed, but its answers have not been evaluated.
+- **The agent was checked by hand, not scored.** I asked it live in Jira and in Confluence (what adding Glimpse commits you to, and the Apex clause) and it answered from the register. There is no recorded evaluation of its answers, and the MCP tools have not been driven by an external MCP client.
+- **Forge LLM must be available on the site.** Without it, ticket classification falls back to the cautious rules and contract extraction reports an error instead of a reading.
 - **The register is authoritative in the Jira install.** Forge storage is per product install, so a shared read-only copy is published as a Confluence page ("Aviso Previo register (managed by the app, do not edit)") and the Rovo agent reads it when asked from Confluence. Opening a privacy request needs Jira's ticket records, so from Confluence the agent points you to Jira. Two copies of the agent appear (one per install); both answer.
-- **The Teamwork Graph sync is tested against a fake graph client.** It only runs after an admin connects the connector, and the shape of what the graph accepts is confirmed by the live **Sync now** result, not by this repo's tests.
+- **The Teamwork Graph sync** was run live once: the graph accepted all 41 contract documents. The ticket links it creates are covered by tests with a fake graph client; they appear once tickets have been assessed. It needs a site that supports connectors, and a free trial site did not offer it.
 - **Sample data only.** Aviso Previo summarizes contracts and is not legal advice.
 
 More in [What is real, and what is not](#what-is-real-and-what-is-not).
@@ -107,6 +107,7 @@ More in [What is real, and what is not](#what-is-real-and-what-is-not).
 | Ticket understanding | `@forge/llm` (Claude), with a cautious rule fallback | [`src/classification/ticketClassifier.ts`](src/classification/ticketClassifier.ts) |
 | Contract extraction | `@forge/llm`, reading the Confluence page; the clause must be found word for word | [`src/extraction/extractor.ts`](src/extraction/extractor.ts) |
 | Register and decisions | `@forge/kvs` (`dpa:{id}`, `vendor:{key}`, `decision:{issueKey}`) | [`src/storage/register.ts`](src/storage/register.ts) |
+| Shared read-only copy of the register | A Confluence page, because Forge storage is separate for each product install | [`src/storage/mirror.ts`](src/storage/mirror.ts) |
 | Contract pages | Confluence REST v2: find the space, create or update pages, read them back | [`src/confluence/pages.ts`](src/confluence/pages.ts) |
 | Privacy request | Jira REST: creates a Task in project `PRIV` if it exists, else in the ticket's project | [`src/legal/legalRequest.ts`](src/legal/legalRequest.ts) |
 | Agent | `rovo:agent` with three Rovo `action` modules | [`manifest.yml`](manifest.yml), [`src/rovo/actions.ts`](src/rovo/actions.ts) |
@@ -118,7 +119,7 @@ Every manifest module, scope and API signature is logged against the Atlassian d
 
 ## Full walkthrough
 
-**Judges (no setup):** follow [Try it](#try-it). The most telling checks are step 2 (an ambiguous clause is not guessed) and step 5 (try to move the Glimpse ticket to Done).
+**Judges (no setup):** follow [Try it](#try-it). The most telling checks are step 2 (an ambiguous clause is not guessed) and step 6 (try to move the Glimpse ticket to Done, after the one-time step 5).
 
 **Locally:**
 
@@ -126,7 +127,7 @@ Every manifest module, scope and API signature is logged against the Atlassian d
 npm install
 npm --prefix admin-ui install
 npm run build          # type-checks the functions, builds the admin page and the issue panel
-npm test               # 60 tests that run the real modules against fake Jira, Confluence, storage and model
+npm test               # 92 tests that run the real modules against fake Jira, Confluence, storage and model
 forge lint
 ```
 
@@ -178,7 +179,9 @@ flowchart LR
   A --> H[evaluateHold<br/>pure TypeScript]
   H --> P[Issue panel]
   H --> V[Workflow validator<br/>blocks transition to Done]
+  R -->|read-only copy<br/>as a Confluence page| S[Shared copy]
   R --> M[Rovo agent + MCP tools]
+  S --> M
   R --> G[Teamwork Graph<br/>contract documents linked to tickets]
   A --> G
 ```
@@ -217,7 +220,8 @@ src/
   extraction/               Contract extractor, verbatim-clause check, HTML to text
   evaluation/               Scores a model reading against a label
   confluence/               Find or create the space, upsert pages, read a page
-  storage/                  Register and vendor reads from KVS
+  storage/                  Register and vendor reads from KVS, and the shared copy (mirror)
+  llm/                      Model calls (supported model ids, fallback) and reply parsing
   legal/                    Draft customer notice and the Jira privacy request
   rovo/                     MCP and Rovo actions
   graph/                    Teamwork Graph connector: contracts as documents, linked to tickets
@@ -236,7 +240,7 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 
 | Criterion | Where to look |
 |---|---|
-| Technological implementation | A workflow validator and issue panel driven by one data-driven assessment, a deterministic date engine, model-based ticket classification and contract extraction with a verbatim-clause check, an evaluation that runs the model over 41 Confluence pages, a counsel review and resolution flow, a Rovo agent with three tools also exposed over MCP, a Teamwork Graph connector, real Confluence and Jira reads and writes, and 60 tests that run the actual modules. The limits are listed above. |
+| Technological implementation | A workflow validator and issue panel driven by one data-driven assessment, a deterministic date engine, model-based ticket classification and contract extraction with a verbatim-clause check, an evaluation that runs the model over 41 Confluence pages, a counsel review and resolution flow, a Rovo agent with three tools also exposed over MCP, a Teamwork Graph connector, real Confluence and Jira reads and writes, and 92 tests that run the actual modules. The limits are listed above. |
 | Design | One minimal system across admin and issue panel: [assets/BRAND.md](assets/BRAND.md). Responsive down to the Jira sidebar, light and dark. |
 | Potential impact | Subprocessor-notice breaches are a real, specific contractual risk for any SaaS company with enterprise customers. The audience is privacy counsel, DPOs and the engineers who ship. |
 | Innovation | Contract commitments checked at the moment a ticket changes status, instead of in a spreadsheet after the fact, with a model that is kept away from the decision and made to prove its quotes. |
@@ -244,22 +248,24 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 
 ## What is real, and what is not
 
-**Built and tested** (`npm test`, 60 tests with the real modules and a fake Jira, Confluence, storage and model):
+**Built and tested** (`npm test`, 92 tests with the real modules and a fake Jira, Confluence, storage and model):
 
-- The date engine: calendar days, business days that skip weekends, UTC-safe, the longest notice winning (12 tests, with the hold policy).
-- The hold policy: only confirmed terms count, it fails closed when nothing is confirmed, region changes only touch restricted contracts, an unknown region counts as outside, and the clock does not slide.
-- The workflow validator on arbitrary ticket keys: it blocks with numbers from the register, allows moves before release, honours a counsel override, ends when the window passes, and blocks when the ticket cannot be read (10 tests).
-- The classifier: model reply parsing, the fallback when the model fails, and the fallback rules on 30 labelled tickets (3 tests).
-- The extractor: verbatim-clause verification, rejection of an invented clause, failures reported as errors, and the scoring of a reading against a label (9 tests).
+- The date engine and hold policy: calendar days, business days that skip weekends, UTC-safe, the longest notice winning; only confirmed terms count, it fails closed when nothing is confirmed, region changes only touch restricted contracts, an unknown region counts as outside, and the clock does not slide (12 tests).
+- The workflow validator on arbitrary ticket keys: it blocks with numbers from the register, allows moves before release, resolves a transition that arrives with only an id, blocks one it cannot identify, honours a counsel override, ends when the window passes, blocks when the ticket cannot be read, and holds a synthetic-only ticket until a person confirms it (15 tests).
+- The classifier: model reply parsing in every shape, the fallback when the model fails or returns nonsense, and the fallback rules on 30 labelled tickets (5 tests).
+- The model calls: exact supported model ids, fallback to the next only when a model is refused, and no retry on other errors (5 tests).
+- The extractor: verbatim-clause verification, rejection of an invented clause, failures reported as errors, every reply shape, and the scoring of a reading against a label (11 tests).
+- Re-check and synthetic confirmation: a wrong earlier reading is replaced, an override, privacy request and a running clock are kept, and a confirmation records who made it (6 tests).
 - The Rovo tools: new, approved and moved vendors, the empty-register error, ambiguous clauses, and privacy requests created for real, idempotent, and never faked (12 tests).
+- The shared register copy: published once and updated, survives awkward characters, used by the other install only when it has nothing of its own, found even when the contracts space could not be created, and privacy requests refused outside Jira (12 tests).
 - The Confluence seeding: one page per contract in batches, safe to repeat, and readable back as text (4 tests).
-- The Teamwork Graph sync: nothing happens until connected, contracts become workspace-visible documents, tickets are linked only to the contracts their hold binds, and rejections and failures are recorded (9 tests).
+- The Teamwork Graph sync: nothing happens until connected, contracts become workspace-visible documents, tickets are linked only to the contracts their hold binds, and rejections and failures are recorded (10 tests).
 
 **Built, not covered by automated tests:**
 
 - The Custom UI admin page and issue panel (checked by hand and in a browser with a mock server).
 - The calls to the real Jira, Confluence and Forge LLM APIs. The tests replace them with fakes; the app is deployed to a development site.
-- The live model's accuracy beyond the single recorded run above, and live-model ticket classification, which is not scored.
+- The live model's accuracy beyond the two recorded runs above, and live-model ticket classification, which is not scored.
 
 **Not built, or not what it might sound like:**
 
@@ -268,8 +274,8 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 - **Notice sent versus assessed.** The clock starts at first assessment, not when the notice goes out.
 - **Hosting region.** It is read from the ticket text, with unknown treated as outside the EU/UK.
 - **Live-model ticket classification accuracy** is not measured; only contract extraction has a recorded run.
-- **Agent quality.** The Rovo agent is deployed with a bounded prompt, but there is no recorded evaluation of its answers.
-- **A live graph sync result.** It appears on the admin page once an admin connects the connector.
+- **Agent quality.** The Rovo agent is deployed with a bounded prompt and was checked by hand, but there is no recorded evaluation of its answers.
+- **Live ticket links in the graph.** The live sync accepted all 41 documents; the contract-to-ticket links are covered by tests but have not been confirmed in the graph's own search.
 - **Marketplace.** The app is not listed.
 
 ## Live extraction results
@@ -300,14 +306,17 @@ npm test
 | File | What it checks |
 |---|---|
 | [`engine.test.ts`](scripts/test/engine.test.ts) | Dates, weekends, timezone independence, region parsing, and the hold policy |
-| [`validator.test.ts`](scripts/test/validator.test.ts) | The real workflow validator on any ticket key, override, elapsed window, fail closed |
-| [`classifier.test.ts`](scripts/test/classifier.test.ts) | Model parsing, the rule fallback, and its score on `src/data/ticketTestSet.json` |
-| [`extraction.test.ts`](scripts/test/extraction.test.ts) | Verbatim-clause checking, invented clauses, errors, and the scoring |
+| [`validator.test.ts`](scripts/test/validator.test.ts) | The real workflow validator on any ticket key, override, elapsed window, id-only transitions, synthetic confirmation, fail closed |
+| [`classifier.test.ts`](scripts/test/classifier.test.ts) | Model parsing in every reply shape, the rule fallback, and its score on `src/data/ticketTestSet.json` |
+| [`llm.test.ts`](scripts/test/llm.test.ts) | Supported model ids and the fallback between them |
+| [`extraction.test.ts`](scripts/test/extraction.test.ts) | Verbatim-clause checking, invented clauses, errors, reply shapes, and the scoring |
+| [`recheck.test.ts`](scripts/test/recheck.test.ts) | Re-checking a ticket, and recording a synthetic-data confirmation |
 | [`rovo.test.ts`](scripts/test/rovo.test.ts) | The three Rovo tools and the privacy request |
+| [`mirror.test.ts`](scripts/test/mirror.test.ts) | The shared read-only copy of the register and the agent reading it from the other install |
 | [`seed.test.ts`](scripts/test/seed.test.ts) | Writing and re-writing the Confluence pages, and reading them back |
 | [`graph.test.ts`](scripts/test/graph.test.ts) | The Teamwork Graph sync: documents, permissions, ticket links, rejections |
 
-The tests load [`helpers.ts`](scripts/test/helpers.ts) first, which swaps `@forge/kvs`, `@forge/api`, `@forge/llm` and `@forge/teamwork-graph` for in-memory fakes. The code under test is the real code, unmodified. They do not measure the live model: for that, use the **Evaluation** tab.
+The tests load [`helpers.ts`](scripts/test/helpers.ts) first, which swaps `@forge/kvs`, `@forge/api`, `@forge/llm`, `@forge/resolver` and `@forge/teamwork-graph` for in-memory fakes. The code under test is the real code, unmodified. They do not measure the live model: for that, use the **Evaluation** tab.
 
 Related docs: [docs/FORGE.md](docs/FORGE.md) (every module, scope and API), [docs/STORAGE_DECISION.md](docs/STORAGE_DECISION.md), [docs/COSTS.md](docs/COSTS.md), [docs/DEVPOST.md](docs/DEVPOST.md), [docs/VIDEO_SCRIPT.md](docs/VIDEO_SCRIPT.md).
 
