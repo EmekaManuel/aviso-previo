@@ -47,7 +47,11 @@ export function holdMessage(a: IssueAssessment): string {
  */
 export async function validateTransition(payload: ValidatorPayload): Promise<ValidatorResult> {
   const issueKey = payload?.issue?.key || '';
-  if (!isReleaseTransition(payload)) return { result: true };
+  const target = payload?.transition?.to?.name ?? payload?.transition?.name ?? '(none)';
+  if (!isReleaseTransition(payload)) {
+    console.log(`[Aviso Previo] ${issueKey} -> "${target}": not a release transition, allowed`);
+    return { result: true };
+  }
 
   try {
     const a = await assessIssue(issueKey);
@@ -55,7 +59,9 @@ export async function validateTransition(payload: ValidatorPayload): Promise<Val
       console.log(`[Aviso Previo] ${issueKey} released by counsel override: ${a.overrideReason}`);
       return { result: true };
     }
-    if (a.holdApplies && a.holdActive) return { result: false, errorMessage: holdMessage(a) };
+    const block = a.holdApplies && a.holdActive;
+    console.log(`[Aviso Previo] ${issueKey} -> "${target}": ${a.classification}, hold applies=${a.holdApplies}, active=${a.holdActive}, ${block ? 'BLOCKED' : 'allowed'}`);
+    if (block) return { result: false, errorMessage: holdMessage(a) };
     return { result: true };
   } catch (error: any) {
     console.error(`Workflow validator error on ${issueKey}:`, error);
