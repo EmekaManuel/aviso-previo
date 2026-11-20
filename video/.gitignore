@@ -1,0 +1,7 @@
+node_modules/
+out/
+.env
+public/live/
+public/ui/
+public/vo/
+public/audio/
