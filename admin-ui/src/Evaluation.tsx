@@ -43,7 +43,7 @@ export function Evaluation({ rows, total, running, finished, onRun }: Props) {
       {rows.length > 0 && (
         <section className="card card-pad">
           <div className="row spread" style={{ marginBottom: 6 }}>
-            <span className="kicker">{s.scored} of {s.contracts} contracts read{finished ? '' : ' so far'}</span>
+            <span className="kicker">{s.scored} of {total || s.contracts} contracts read{finished ? '' : ' so far'}</span>
             {finished && s.errors === 0 && (
               <span className={`pill ${s.confidentlyWrong === 0 && s.wrong.length === 0 ? 'ok' : 'warn'}`}>
                 {s.confidentlyWrong === 0 && s.wrong.length === 0 ? 'No disagreements' : `${s.wrong.length} disagreement${s.wrong.length === 1 ? '' : 's'}`}
