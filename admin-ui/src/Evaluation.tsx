@@ -73,13 +73,14 @@ export function Evaluation({ rows, total, running, finished, onRun }: Props) {
       {s.wrong.length > 0 && (
         <section className="card card-pad">
           <h2 className="h2">Disagreements</h2>
-          <p className="muted" style={{ margin: '4px 0 0' }}>Where Claude's reading differs from the label. Review the clause before deciding which is right.</p>
+          <p className="muted" style={{ margin: '4px 0 0' }}>Where Claude's reading differs from the label. When it declines to decide, its reason is shown. Review the clause before deciding which is right.</p>
           <ul className="attn">
             {s.wrong.map((r) => (
               <li key={r.id}>
                 <div style={{ padding: '12px 0' }}>
                   <span className="who">{r.customerName}</span>
                   <span className="muted"> · expected {r.expected?.days ?? 'unclear'} {r.expected?.unit.replace('_', ' ')}, read {r.got?.unclear ? 'unclear' : `${r.got?.days} ${r.got?.unit.replace('_', ' ')}`}</span>
+                  {r.reason && <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>Model's reason: {r.reason}</div>}
                 </div>
               </li>
             ))}

@@ -61,6 +61,7 @@ export interface ScoreRow {
   locationOk?: boolean;
   unclearOk?: boolean;
   clauseVerbatim?: boolean;
+  reason?: string;
   confidentlyWrong?: boolean;
   expected?: { days: number | null; unit: string; termination: boolean; euUkOnly: boolean };
   got?: { days: number | null; unit: string; termination: boolean; euUkOnly: boolean; unclear: boolean };

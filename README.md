@@ -58,7 +58,7 @@
 **Honest limits.**
 - **The sample register is seeded with hand-labelled terms.** The model reads a contract from Confluence on demand ("Read with Claude") and in the Evaluation tab. It does not yet watch Confluence and ingest new or edited pages by itself.
 - **The notice clock starts when a ticket is first assessed,** not when the customer notice is actually sent.
-- **The live model's accuracy is not recorded in this repo.** Run the Evaluation tab to produce it. The tests use a fake model, and the fallback rules score 28/30 on the labelled tickets after being tuned while looking at that set, so treat that number as optimistic.
+- **One live evaluation run is recorded below.** The tests use a fake model, and the fallback rules score 28/30 on the labelled tickets after being tuned while looking at that set, so treat that number as optimistic.
 - **The vendor's hosting region comes from the ticket text.** If the ticket does not say, the region is treated as outside the EU/UK.
 - **The workflow validator may call the model.** The first assessment of an unseen ticket reads it from Jira and classifies it; later checks use the stored decision.
 - **Rovo and MCP tools are tested directly,** not through a live Rovo or external MCP client. The Rovo agent is deployed, but its answers have not been evaluated.
@@ -259,7 +259,7 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 
 - The Custom UI admin page and issue panel (checked by hand and in a browser with a mock server).
 - The calls to the real Jira, Confluence and Forge LLM APIs. The tests replace them with fakes; the app is deployed to a development site.
-- A recorded accuracy run of the live model. The Evaluation tab produces one; the figures are not stored in this repo.
+- The live model's accuracy beyond the single recorded run above, and live-model ticket classification, which is not scored.
 
 **Not built, or not what it might sound like:**
 
@@ -267,10 +267,26 @@ docs/                       Forge reference, storage decision, costs, Devpost an
 - **The sample "counsel" confirmations.** 40 of 41 contracts are pre-confirmed in the sample so the hold works immediately.
 - **Notice sent versus assessed.** The clock starts at first assessment, not when the notice goes out.
 - **Hosting region.** It is read from the ticket text, with unknown treated as outside the EU/UK.
-- **Live-model classification accuracy** is not measured here.
+- **Live-model ticket classification accuracy** is not measured; only contract extraction has a recorded run.
 - **Agent quality.** The Rovo agent is deployed with a bounded prompt, but there is no recorded evaluation of its answers.
 - **A live graph sync result.** It appears on the admin page once an admin connects the connector.
 - **Marketplace.** The app is not listed.
+
+## Live extraction results
+
+One run of the **Evaluation** tab on a development site, 20 November 2026: Forge LLM (Claude) reading all 41 contracts from their Confluence pages, scored against the label each sample contract was written with.
+
+| Check | Result |
+|---|---|
+| Quoted clause found word for word in the page | **41/41** |
+| Termination rights found | **2/2** |
+| EU/UK-only limits found | **3/3** |
+| Ambiguous clause ("a reasonable period") flagged unclear | **1/1** |
+| Notice period matches the label | 29/41 |
+| Calendar vs. business days matches the label | 29/41 |
+| **Confidently wrong** (certain, and wrong) | **0** |
+
+The 12 disagreements all have the same shape: the clause gives a number of days but never says calendar or business days (for example "thirty (30) days prior electronic notice"). The labels assume calendar days; the model declined to assume and read the term as unclear. That is the cautious direction: a person decides, nothing is guessed, and no wrong number reached the register. It also means the sample labels contain an assumption a lawyer would want to confirm. This is a single run on 41 sample contracts the author wrote, so it shows the behaviour, not a general accuracy figure.
 
 ## Tests and verification
 

@@ -84,7 +84,7 @@ One function, `assessIssue`, assesses a ticket. The issue panel, the validator, 
 ## Evaluation and tests
 
 - **60 automated tests** run the real modules against fake Jira, Confluence, storage and model: the date engine, the hold policy (only confirmed terms count; fails closed), the validator on arbitrary ticket keys, the classifier and its fallback, the extractor's verbatim check and scoring, the Rovo tools, and the Confluence seeding.
-- **The Evaluation tab** has the model read all 41 contracts from their Confluence pages and scores every answer against the label each sample contract was written with, counting a confident wrong answer as a failure. Run it in the app to get live figures; they are not claimed here until recorded.
+- **The Evaluation tab** has the model read all 41 contracts from their Confluence pages and scores every answer against the label each sample contract was written with, counting a confident wrong answer as a failure. One live run (20 November 2026): the quoted clause was found word for word in **41/41**, termination rights **2/2**, EU/UK-only limits **3/3**, the ambiguous clause flagged **1/1**, and **0 confidently wrong**. Notice period and unit matched the label on 29/41; the other 12 all give a number of days without saying calendar or business days, and the model declined to assume and flagged them for a person. It is a single run on sample contracts, so it shows the behaviour rather than a general accuracy.
 - **The rule fallback** gets 28 of 30 labelled tickets right and finds all 8 new subprocessors. It was tuned while looking at that set, so treat it as optimistic.
 
 ---

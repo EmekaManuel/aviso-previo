@@ -22,6 +22,8 @@ export interface ContractScore {
   locationOk: boolean;
   unclearOk: boolean;
   clauseVerbatim: boolean;
+  /** Why the model said it could not decide, when it did. */
+  reason?: string;
   /** Said it was certain, and was wrong about the notice period or unit. */
   confidentlyWrong: boolean;
   expected: { days: number | null; unit: string; termination: boolean; euUkOnly: boolean };
@@ -44,6 +46,7 @@ export function scoreContract(label: ContractLabel, got: ExtractedDPATerms, page
     locationOk: (got.locationRestriction === 'EU_UK_ONLY') === (label.locationRestriction === 'EU_UK_ONLY'),
     unclearOk: expectedUnclear === gotUnclear,
     clauseVerbatim: containsClause(pageText, got.exactClause),
+    reason: gotUnclear ? got.unclearReason : undefined,
     confidentlyWrong: !gotUnclear && (!noticeOk || !unitOk),
     expected: {
       days: label.noticePeriodDays,
