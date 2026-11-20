@@ -53,7 +53,7 @@ export default function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <Mark size={34} />
+          <Mark size={28} />
           <span className="brand-name">Aviso Previo</span>
           <span className="brand-sep" />
           <span className="brand-sub">Subprocessor register</span>

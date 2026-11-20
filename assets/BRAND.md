@@ -4,49 +4,49 @@
 **Audience** · Privacy counsel and DPOs who own the contracts, compliance leads who answer for them, and engineers who would otherwise ship past them.
 **Personality** · Calm, exact, evidence-first. It reads like a well-kept contract register, not a dashboard toy. It states what the contract says, quotes it, and never guesses.
 
+## Principles
+
+Minimal and quiet. Hairlines and whitespace instead of boxes, shadows and fills. One accent colour. Type does the work.
+
 ## Mark
 
-An **A** whose crossbar is the **notice window** (teal) and whose apex is the **go-live date** (amber). That is the product in one shape: the window must close before the date.
+A plain **A** whose crossbar is the **notice window**, in the one accent colour. No tile, no effects.
 
 | File | Use |
 | --- | --- |
-| `logo/aviso-previo-mark.svg` | App icon, avatars, favicon (dark tile) |
-| `logo/aviso-previo-mark-mono.svg` | One-colour print, `currentColor` |
-| `logo/aviso-previo-logo.svg` | Horizontal lockup on light backgrounds |
-| `logo/aviso-previo-logo-reversed.svg` | Horizontal lockup on dark backgrounds |
-| `icons/app-icon-144.png`, `app-icon-512.png` | Marketplace / Forge listing |
+| `logo/aviso-previo-mark.svg` | Glyph on light backgrounds |
+| `logo/aviso-previo-mark-mono.svg` | One colour via `currentColor` |
+| `logo/aviso-previo-logo.svg` / `-reversed.svg` | Horizontal lockup, light / dark backgrounds |
+| `icons/app-icon.svg`, `app-icon-144.png`, `app-icon-512.png`, `favicon.svg` | Marketplace, Forge listing, favicon (the only place a dark tile is used) |
 | `social/cover-1500x1000.png` | Devpost cover (3:2) |
 
-Keep clear space equal to the width of the crossbar. Minimum size 24 px. Do not recolour the dot, rotate, or add effects.
-Regenerate PNGs with `npm run assets`.
+Clear space equals the crossbar width. Minimum 20 px. Regenerate PNGs with `npm run assets`.
 
 ## Colour
 
 | Token | Light | Dark | Role |
 | --- | --- | --- | --- |
-| Ink | `#101C2C` | `#EDEAE2` | Text, primary buttons |
-| Paper | `#F6F4EF` | `#0C1520` | Page background (warm, not stark white) |
-| Surface | `#FFFFFF` | `#121E2D` | Cards |
-| Notice teal | `#0B8F82` | `#3CCFBF` | Confirmed, progress, the notice window |
-| Hold amber | `#B7791F` | `#F2B544` | Awaiting review, the go-live date |
-| Risk red | `#B3261E` | `#FF8A80` | Termination rights, counsel-to-decide |
-| Region violet | `#4A3F91` | `#B9B0FF` | EU/UK data restrictions |
+| Ink | `#141414` | `#EDEDEA` | Text, primary button |
+| Paper | `#FCFCFB` | `#0E0E0F` | Background |
+| Line | `#EBEBE7` | `#232325` | Hairlines |
+| Muted | `#8B8B86` | `#7C7C77` | Secondary text |
+| Accent teal | `#0B7A70` | `#4FD1C1` | Confirmed, progress, the mark |
 
-Colour carries meaning only: teal = settled, amber = pending, red = needs a person, violet = region rule. It is never decoration.
+Status is a 6 px dot beside plain text: teal confirmed, amber awaiting review, red counsel to decide. Never a filled badge.
 
 ## Type
 
-- **Source Serif 4** (600): headings, numerals, and **contract clauses**. Serif signals "this is the document".
-- **Inter**: everything else (tables, labels, buttons).
+- **Inter**: all UI text, headings, numerals (light weight for big figures).
+- **Source Serif 4**: contract clauses only, so the signed wording always looks like the document.
 - Both are bundled in `admin-ui` (Forge's CSP blocks external fonts).
 
 ## Voice
 
 - Say what the contract says: "60 calendar days", not "a long notice period".
 - Say who decides: "Counsel to decide", not "AI uncertain".
-- No exclamation marks, no emoji, no "AI-powered" in the UI. Mandatory footer: *Aviso Previo summarizes your contracts. It is not legal advice.* and *Sample data · Fictional*.
+- No exclamation marks, emoji or "AI-powered" in the UI. Footer: *Aviso Previo summarizes your contracts. It is not legal advice.* and *Sample data · Fictional*.
 
-## Where it lives in the product
+## Where it lives
 
-- **Admin page** (`admin-ui/`, Custom UI) carries the full brand: tokens in `src/styles.css`, light and dark.
-- **Issue panel / glance** (`src/frontend/`, UI Kit) uses native Atlassian components so it inherits Jira's theme, with the same colour semantics through Lozenges.
+- **Admin page** (`admin-ui/`, Custom UI): full brand, tokens in `src/styles.css`, light and dark.
+- **Issue panel / glance** (`src/frontend/`, UI Kit): native Atlassian components, same status semantics through Lozenges.

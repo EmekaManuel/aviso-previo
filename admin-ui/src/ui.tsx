@@ -44,11 +44,9 @@ export const SortIcon = ({ dir }: { dir?: 'asc' | 'desc' }) => (
   <I width="12" height="12" opacity={dir ? 1 : 0.35}><path d={dir === 'desc' ? 'm6 9 6 6 6-6' : 'm6 15 6-6 6 6'} /></I>
 );
 
-export const Mark = ({ size = 32 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 96 96" role="img" aria-label="Aviso Previo">
-    <rect width="96" height="96" rx="22" fill="#101C2C" />
-    <path d="M27 71 48 25 69 71" fill="none" stroke="#F4F1EA" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M34.5 57h27" fill="none" stroke="#3CCFBF" strokeWidth="7" strokeLinecap="round" />
-    <circle cx="48" cy="25" r="6.5" fill="#F2B544" stroke="#101C2C" strokeWidth="3" />
+export const Mark = ({ size = 28 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 96 96" role="img" aria-label="Aviso Previo" fill="none" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M24 74 48 22 72 74" stroke="currentColor" />
+    <path d="M35 58h26" stroke="var(--teal)" />
   </svg>
 );
