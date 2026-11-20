@@ -67,9 +67,9 @@ export async function seedStorage(onProgress?: (log: SeedProgressLog) => void): 
   });
 
   // 3. Seed Planted Ticket Decisions
-  // ENG-142: New subprocessor Glimpse -> Notice required for all 41 DPAs, longest 60 days, unlock 19 Jan 2027
-  await kvs.set('decision:ENG-142', {
-    issueKey: 'ENG-142',
+  // ENG-142 / ENG-2: New subprocessor Glimpse -> Notice required for all 41 DPAs, longest 60 days, unlock 19 Jan 2027
+  const glimpseDecision = {
+    issueKey: 'ENG-2',
     classification: 'NEW_SUBPROCESSOR',
     vendor: 'Glimpse',
     purpose: 'Session replay analytics for payslip view layout debugging',
@@ -88,11 +88,13 @@ export async function seedStorage(onProgress?: (log: SeedProgressLog) => void): 
     legalRequestKey: 'PRIV-18',
     aiReason:
       'Glimpse is not on the published subprocessor list and will capture payslip DOM sessions containing personal payroll data. Vendor processes data in US.',
-  });
+  };
+  await kvs.set('decision:ENG-142', { ...glimpseDecision, issueKey: 'ENG-142' });
+  await kvs.set('decision:ENG-2', glimpseDecision);
 
-  // ENG-151: Upgrade existing vendor ErrorSentry -> No change, no panel
-  await kvs.set('decision:ENG-151', {
-    issueKey: 'ENG-151',
+  // ENG-151 / ENG-4: Upgrade existing vendor ErrorSentry -> No change, no panel
+  const errorSentryDecision = {
+    issueKey: 'ENG-4',
     classification: 'EXISTING_VENDOR_NO_CHANGE',
     vendor: 'ErrorSentry',
     purpose: 'Client-side error monitoring SDK upgrade to v8',
@@ -101,11 +103,13 @@ export async function seedStorage(onProgress?: (log: SeedProgressLog) => void): 
     longestNoticeDays: 0,
     aiReason:
       'ErrorSentry is already an approved subprocessor (published 2025-02-01). No change in hosting location (Frankfurt, EU) or data processing scope.',
-  });
+  };
+  await kvs.set('decision:ENG-151', { ...errorSentryDecision, issueKey: 'ENG-151' });
+  await kvs.set('decision:ENG-4', errorSentryDecision);
 
-  // ENG-156: Move RelayPost sending region from EU to US -> Location change affecting 3 EU-only customers
-  await kvs.set('decision:ENG-156', {
-    issueKey: 'ENG-156',
+  // ENG-156 / ENG-6: Move RelayPost sending region from EU to US -> Location change affecting 3 EU-only customers
+  const relayPostDecision = {
+    issueKey: 'ENG-6',
     classification: 'LOCATION_CHANGE',
     vendor: 'RelayPost',
     purpose: 'Routing transactional emails via US warm-up IP pool',
@@ -122,11 +126,13 @@ export async function seedStorage(onProgress?: (log: SeedProgressLog) => void): 
     earliestGoLiveDate: '2027-01-19',
     aiReason:
       'RelayPost is an existing subprocessor, but relocating email processing infrastructure from Dublin (EU) to the US violates explicit territorial processing limits for 3 customer DPAs.',
-  });
+  };
+  await kvs.set('decision:ENG-156', { ...relayPostDecision, issueKey: 'ENG-156' });
+  await kvs.set('decision:ENG-6', relayPostDecision);
 
-  // ENG-160: Sandbox evaluation of Glimpse with synthetic data -> No customer data
-  await kvs.set('decision:ENG-160', {
-    issueKey: 'ENG-160',
+  // ENG-160 / ENG-8: Sandbox evaluation of Glimpse with synthetic data -> No customer data
+  const syntheticDecision = {
+    issueKey: 'ENG-8',
     classification: 'NO_CUSTOMER_DATA',
     vendor: 'Glimpse',
     purpose: 'Sandbox performance evaluation with synthetic fixtures only',
@@ -135,7 +141,9 @@ export async function seedStorage(onProgress?: (log: SeedProgressLog) => void): 
     longestNoticeDays: 0,
     aiReason:
       'Work involves third-party vendor Glimpse, but ticket description explicitly confines processing to mock fixtures and synthetic data without production personal data.',
-  });
+  };
+  await kvs.set('decision:ENG-160', { ...syntheticDecision, issueKey: 'ENG-160' });
+  await kvs.set('decision:ENG-8', syntheticDecision);
 
   onProgress?.({
     stage: 'Storage: Planted Decisions',
