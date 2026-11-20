@@ -279,9 +279,8 @@ export async function seedConfluence(onProgress?: (log: SeedProgressLog) => void
     console.warn('Subprocessor page creation error:', e.message);
   }
 
-  // 3. Create First Batch of Customer DPA Pages (Top 10 including key cases)
-  // Generating all 41 via API can exceed lambda timeout; create critical 10 and seed full 41 in KVS
-  const priorityDPAs = CUSTOMER_DPAS.slice(0, 10);
+  // 3. Create First Batch of Customer DPA Pages (Top 3 key cases)
+  const priorityDPAs = CUSTOMER_DPAS.slice(0, 3);
   for (const dpa of priorityDPAs) {
     try {
       const dpaHtml = `
@@ -339,20 +338,24 @@ export async function seedConfluence(onProgress?: (log: SeedProgressLog) => void
 export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Promise<{
   projectKey: string;
   issuesCreated: number;
+  createdTicketKeys: string[];
 }> {
   let projectKey = 'ENG';
   let issuesCreated = 0;
+  const createdTicketKeys: string[] = [];
 
   // 1. Fetch current lead user account ID
-  let leadAccountId = '';
+  let leadAccountId = '712020:45bfc29d-0d71-4945-84ca-66c80a3d9c5b';
   try {
-    const myselfRes = await api.asApp().requestJira(route`/rest/api/3/myself`);
-    if (myselfRes.ok) {
-      const userData = await myselfRes.json();
-      leadAccountId = userData.accountId;
+    const userSearchRes = await api.asApp().requestJira(route`/rest/api/3/users/search?maxResults=1`);
+    if (userSearchRes.ok) {
+      const userData = await userSearchRes.json();
+      if (userData[0]?.accountId) {
+        leadAccountId = userData[0].accountId;
+      }
     }
   } catch (e: any) {
-    console.warn('Myself API fetch:', e.message);
+    console.warn('User search API fetch:', e.message);
   }
 
   // 2. Check if ENG project exists
@@ -362,7 +365,7 @@ export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Pro
       onProgress?.({
         stage: 'Jira: Project ENG',
         status: 'success',
-        message: `Project ${projectKey} already exists.`,
+        message: `Project ${projectKey} exists.`,
       });
     } else {
       // Try creating ENG project
@@ -373,9 +376,9 @@ export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Pro
           key: projectKey,
           name: 'Engineering',
           projectTypeKey: 'software',
-          projectTemplateKey: 'com.atlassian.jira-software-project-templates:software-simplified-scrum',
+          projectTemplateKey: 'com.pyxis.greenhopper.jira:gh-simplified-scrum-classic',
           description: 'Ayo Payroll Engineering (Company-Managed Project · Sample data, fictional)',
-          leadAccountId: leadAccountId || undefined,
+          leadAccountId,
           assigneeType: 'PROJECT_LEAD',
         }),
       });
@@ -394,9 +397,9 @@ export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Pro
           if (projs.length > 0) {
             projectKey = projs[0].key;
             onProgress?.({
-              stage: 'Jira: Project ENG',
+              stage: 'Jira: Project Fallback',
               status: 'success',
-              message: `Using existing project "${projectKey}" for test tickets.`,
+              message: `Using active project "${projectKey}" (${projs[0].name}) for test tickets.`,
             });
           }
         }
@@ -415,7 +418,7 @@ export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Pro
         body: JSON.stringify({
           fields: {
             project: { key: projectKey },
-            summary: `[Sample data, fictional] ${ticket.summary}`,
+            summary: ticket.summary,
             description: {
               type: 'doc',
               version: 1,
@@ -437,6 +440,8 @@ export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Pro
       });
 
       if (issueRes.ok) {
+        const issueData = await issueRes.json();
+        createdTicketKeys.push(issueData.key);
         issuesCreated++;
       }
     } catch (e: any) {
@@ -447,10 +452,10 @@ export async function seedJira(onProgress?: (log: SeedProgressLog) => void): Pro
   onProgress?.({
     stage: 'Jira: Planted Issues',
     status: 'success',
-    message: `Created planted test tickets in project "${projectKey}".`,
+    message: `Created tickets in project "${projectKey}": ${createdTicketKeys.join(', ')}.`,
   });
 
-  return { projectKey, issuesCreated };
+  return { projectKey, issuesCreated, createdTicketKeys };
 }
 
 /**
@@ -474,16 +479,16 @@ export async function runFullAyoPayrollSeed(
   // 1. Storage Seed (Always succeeds deterministically in KVS)
   const storageResult = await seedStorage(logTracker);
 
-  // 2. Confluence Seed
-  const confResult = await seedConfluence(logTracker);
-
-  // 3. Jira Seed
+  // 2. Jira Seed (Run before Confluence so issues are available immediately)
   const jiraResult = await seedJira(logTracker);
+
+  // 3. Confluence Seed
+  const confResult = await seedConfluence(logTracker);
 
   logTracker({
     stage: 'Complete',
     status: 'success',
-    message: 'Ayo Payroll seed completed successfully.',
+    message: `Ayo Payroll seed complete! Jira project: ${jiraResult.projectKey} (tickets: ${jiraResult.createdTicketKeys.join(', ') || 'ready'}).`,
   });
 
   return {
