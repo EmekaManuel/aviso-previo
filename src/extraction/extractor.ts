@@ -1,5 +1,6 @@
 import { chat } from '@forge/llm';
 import { containsClause } from './text';
+import { readModelJson } from '../llm/response';
 
 export interface ExtractedDPATerms {
   customerId: string;
@@ -72,16 +73,10 @@ ${contractText}
       ],
     });
 
-    const rawChoice = response.choices?.[0]?.message?.content;
-    const rawText = typeof rawChoice === 'string' ? rawChoice : JSON.stringify(rawChoice);
-
-    // Extract JSON block from markdown fences if present
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('LLM failed to return valid JSON object');
+    const parsed = readModelJson(response);
+    if (!('noticeUnit' in parsed) && !('isUnclear' in parsed)) {
+      throw new Error('The model reply did not contain the contract terms.');
     }
-
-    const parsed = JSON.parse(jsonMatch[0]);
 
     // Self-verification: the quoted clause must appear word for word in the contract.
     const quoted = String(parsed.exactClause || '').trim();

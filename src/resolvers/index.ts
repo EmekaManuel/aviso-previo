@@ -26,6 +26,33 @@ resolver.define('getIssueAssessment', async (req) => {
   return assessIssue(issueKey);
 });
 
+/**
+ * Reads the ticket again and classifies it afresh (for when its text changed, or an earlier
+ * reading was wrong). A counsel override and a linked privacy request are kept, and so is
+ * the notice clock if a hold had already started.
+ */
+resolver.define('reassessIssue', async (req) => {
+  const issueKey = req.context?.extension?.issue?.key;
+  if (!issueKey) throw new Error('This view is not on a Jira issue.');
+  const old = (await kvs.get(`decision:${issueKey}`)) as any;
+  await kvs.delete(`decision:${issueKey}`);
+  const fresh = await assessIssue(issueKey);
+  if (old) {
+    const keep: Record<string, unknown> = {};
+    for (const k of ['overridden', 'overriddenBy', 'overrideReason', 'overriddenAt', 'legalRequestKey']) if (old[k] !== undefined) keep[k] = old[k];
+    const held = old.classification === 'NEW_SUBPROCESSOR' || old.classification === 'LOCATION_CHANGE';
+    if (old.noticeStartedAt && held && (fresh.classification === 'NEW_SUBPROCESSOR' || fresh.classification === 'LOCATION_CHANGE')) {
+      keep.noticeStartedAt = old.noticeStartedAt;
+    }
+    if (Object.keys(keep).length) {
+      const stored = (await kvs.get(`decision:${issueKey}`)) as any;
+      await kvs.set(`decision:${issueKey}`, { ...stored, ...keep });
+      return assessIssue(issueKey);
+    }
+  }
+  return fresh;
+});
+
 /** Opens (or returns) the privacy request for the ticket. */
 resolver.define('createLegalNoticeRequest', async (req) => {
   const { issueKey } = req.payload as { issueKey: string };

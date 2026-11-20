@@ -1,4 +1,4 @@
-import { llm, reset, reply } from './helpers';
+import { llm, reset, reply, replyBlocks, replyFenced, replyText } from './helpers';
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { extractDPATerms } from '../../src/extraction/extractor';
@@ -95,4 +95,21 @@ test('summary keeps errors out of the accuracy figures', async () => {
   assert.equal(s.scored, 1);
   assert.equal(s.errors, 1);
   assert.equal(s.noticeCorrect, 1);
+});
+
+test('reads the contract terms whatever shape the model reply arrives in', async () => {
+  const body = { noticePeriodDays: nordic.noticePeriodDays, noticeUnit: nordic.noticeUnit, objectionWindowDays: nordic.objectionWindowDays, remedy: nordic.remedy, noticeMethod: 'email', locationRestriction: nordic.locationRestriction, exactClause: nordic.exactClause, isUnclear: false, unclearReason: null };
+  for (const response of [reply(body), replyBlocks(body), replyFenced(body)]) {
+    llm.handler = () => response;
+    const r = await extractDPATerms(pageText(nordic), nordic.id, nordic.customerName);
+    assert.equal(r.error, undefined);
+    assert.equal(r.noticePeriodDays, 60);
+    assert.equal(r.clauseVerified, true);
+  }
+});
+
+test('a reply that does not contain the terms is an error, not a silent "unclear"', async () => {
+  llm.handler = () => replyText('{"note":"I could not find anything"}');
+  const r = await extractDPATerms(pageText(nordic), nordic.id, nordic.customerName);
+  assert.match(r.error!, /did not contain the contract terms/);
 });

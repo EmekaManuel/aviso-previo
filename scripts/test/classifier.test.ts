@@ -1,4 +1,4 @@
-import { llm, reset, reply, PUBLISHED_VENDORS } from './helpers';
+import { llm, reset, reply, replyBlocks, replyFenced, replyText, PUBLISHED_VENDORS } from './helpers';
 import test, { beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyTicket } from '../../src/classification/ticketClassifier';
@@ -42,4 +42,32 @@ test('fallback rules on the 30 labelled tickets: never miss a new subprocessor',
   wrong.forEach((w) => console.log('    ' + w));
   assert.equal(newFound, newTotal, 'a new subprocessor must never be missed');
   assert.ok(correct / rows.length >= 0.7, `fallback accuracy ${correct}/${rows.length} fell below 70%`);
+});
+
+const glimpse = { classification: 'NEW_SUBPROCESSOR', vendor: 'Glimpse', hostingRegion: 'OUTSIDE_EU_UK', touchesCustomerData: true, reasoning: 'x' };
+const ticket = [
+  'Add session replay to the payslip screen using Glimpse (fictional vendor) to debug layout bugs',
+  'We will integrate Glimpse session replay SDK onto the payslip screens. Glimpse hosts data on their US multi-tenant cluster.',
+] as const;
+
+test('reads the model reply whatever shape the content arrives in', async () => {
+  for (const [name, response] of [
+    ['plain string', reply(glimpse)],
+    ['content blocks', replyBlocks(glimpse)],
+    ['fenced json with prose', replyFenced(glimpse)],
+  ] as const) {
+    llm.handler = () => response;
+    const r = await classifyTicket(...ticket, PUBLISHED_VENDORS);
+    assert.equal(r.classification, 'NEW_SUBPROCESSOR', name);
+    assert.equal(r.reasoning, 'x', name + ' should be the model reading, not the rules');
+  }
+});
+
+test('a reply without a usable classification falls back to the rules, never to UNRELATED', async () => {
+  for (const bad of [replyText('{"vendor":"Glimpse"}'), replyText('{"classification":"maybe"}'), replyText('{}'), { choices: [{ message: { content: [] } }] }, { choices: [] }]) {
+    llm.handler = () => bad;
+    const r = await classifyTicket(...ticket, PUBLISHED_VENDORS);
+    assert.match(r.reasoning, /Rule-based/);
+    assert.equal(r.classification, 'NEW_SUBPROCESSOR');
+  }
 });

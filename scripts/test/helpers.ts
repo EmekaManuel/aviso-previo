@@ -118,6 +118,14 @@ const fakes: Record<string, any> = {
     },
     route: (strings: TemplateStringsArray, ...vals: any[]) => strings.reduce((acc, s, i) => acc + s + (i < vals.length ? String(vals[i]) : ''), ''),
   },
+  '@forge/resolver': {
+    __esModule: true,
+    default: class {
+      defs: Record<string, any> = {};
+      define(name: string, fn: any) { this.defs[name] = fn; }
+      getDefinitions() { return this.defs; }
+    },
+  },
   '@forge/llm': { chat: async (req: any) => llm.handler(req) },
   '@forge/teamwork-graph': {
     graph: { setObjects: async (req: any) => { twg.calls.push(req); return twg.respond(req); } },
@@ -144,6 +152,11 @@ export function reset() {
 
 /** What the model returns for a chat call. */
 export const reply = (obj: any) => ({ choices: [{ message: { content: JSON.stringify(obj) } }], usage: { input_tokens: 10, output_tokens: 10 } });
+
+/** Other shapes the model's content can arrive in. */
+export const replyBlocks = (obj: any) => ({ choices: [{ message: { content: [{ type: 'text', text: JSON.stringify(obj) }] } }] });
+export const replyFenced = (obj: any) => ({ choices: [{ message: { content: 'Here is the result:\n```json\n' + JSON.stringify(obj, null, 2) + '\n```\nHope that helps.' } }] });
+export const replyText = (text: string) => ({ choices: [{ message: { content: text } }] });
 
 // ── Fixtures ────────────────────────────────────────────────
 import { CUSTOMER_DPAS, PUBLISHED_VENDORS } from '../../src/data/seedData';

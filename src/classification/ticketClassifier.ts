@@ -1,4 +1,5 @@
 import { chat } from '@forge/llm';
+import { readModelJson } from '../llm/response';
 import type { HostingRegion } from '../types';
 import { parseHostingRegion } from '../engine/holdPolicy';
 
@@ -105,18 +106,14 @@ Description: ${description}
       ],
     });
 
-    const rawChoice = response.choices?.[0]?.message?.content;
-    const rawText = typeof rawChoice === 'string' ? rawChoice : JSON.stringify(rawChoice);
-
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('LLM failed to return structured JSON');
+    const parsed = readModelJson(response);
+    // A reply that is not one of the five classes is a failed reading, not an answer: use the rules.
+    if (!isValidClassification(String(parsed.classification))) {
+      throw new Error(`The model returned an unusable classification: ${String(parsed.classification)}`);
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-
     return {
-      classification: parsed.classification || 'UNRELATED',
+      classification: parsed.classification,
       vendor: parsed.vendor || null,
       targetLocation: parsed.targetLocation || null,
       hostingRegion: normaliseRegion(parsed.hostingRegion, parsed.targetLocation),

@@ -2,7 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { api } from './api';
 import type { IssueAssessment } from './types';
 
-const Foot = () => <p className="foot">Sample data · Fictional. Aviso Previo summarizes your contracts. It is not legal advice.</p>;
+const Foot = ({ onRecheck, checking }: { onRecheck?: () => void; checking?: boolean }) => (
+  <p className="foot">
+    Sample data · Fictional. Aviso Previo summarizes your contracts. It is not legal advice.
+    {onRecheck && (
+      <>
+        {' '}
+        <button className="linkbtn" onClick={onRecheck} disabled={checking} style={{ fontSize: 12 }}>
+          {checking ? 'Checking…' : 'Re-check this ticket'}
+        </button>
+      </>
+    )}
+  </p>
+);
 
 export default function Panel() {
   const [a, setA] = useState<IssueAssessment | null>(null);
@@ -13,12 +25,21 @@ export default function Panel() {
   const [busy, setBusy] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [note, setNote] = useState('');
+  const [rechecking, setRechecking] = useState(false);
 
   useEffect(() => { api.getAssessment().then(setA).catch(() => setError(true)); }, []);
 
   if (error) return <div className="panel"><p className="muted">Could not load the assessment. Refresh the issue to retry.</p></div>;
   if (!a) return <div className="panel"><div className="skeleton" style={{ height: 18, width: '40%' }} /><div className="skeleton" style={{ height: 56 }} /><div className="skeleton" style={{ height: 80 }} /></div>;
 
+  const recheck = async () => {
+    setRechecking(true);
+    setNote('');
+    try { setA(await api.reassess()); }
+    catch (e: any) { setNote(e?.message || 'Could not re-check the ticket.'); }
+    finally { setRechecking(false); }
+  };
+  const FootR = () => <Foot onRecheck={recheck} checking={rechecking} />;
   const vendor = a.vendor || 'This vendor';
   const goLive = a.earliestGoLiveDate || '—';
 
@@ -56,7 +77,7 @@ export default function Panel() {
               : 'No third-party processing or data-location changes detected on this ticket.'}
           </p>
         </div>
-        <Foot />
+        <FootR />
       </div>
     );
   }
@@ -71,7 +92,7 @@ export default function Panel() {
           <p className="muted">This ticket describes {vendor} running on staging or synthetic data only. If no customer personal data is processed, no notice is required.</p>
           {!confirmed && <div className="actions"><button className="btn btn-primary" onClick={() => setConfirmed(true)}>Confirm synthetic data only</button></div>}
         </div>
-        <Foot />
+        <FootR />
       </div>
     );
   }
@@ -85,7 +106,7 @@ export default function Panel() {
           <h2>Contract terms are not verified yet</h2>
           <p className="muted">{a.failClosedReason} Ask privacy counsel to review and confirm the register in Aviso Previo Admin.</p>
         </div>
-        <Foot />
+        <FootR />
       </div>
     );
   }
@@ -127,7 +148,7 @@ export default function Panel() {
             <ul className="list">{who.map((c) => <li key={c}>{c}</li>)}</ul>
           </div>
         )}
-        <Foot />
+        <FootR />
       </div>
     );
   }
@@ -212,7 +233,7 @@ export default function Panel() {
         )}
       </div>
       {note && <p className="caption" role="alert">{note}</p>}
-      <Foot />
+      <FootR />
     </div>
   );
 }
