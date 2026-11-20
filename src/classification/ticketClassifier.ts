@@ -1,4 +1,4 @@
-import { chat } from '@forge/llm';
+import { askModel } from '../llm/chat';
 import { readModelJson } from '../llm/response';
 import type { HostingRegion } from '../types';
 import { parseHostingRegion } from '../engine/holdPolicy';
@@ -98,13 +98,10 @@ Description: ${description}
 `;
 
   try {
-    const response = await chat({
-      model: 'claude-sonnet-4-5-20250929',
-      messages: [
+    const response = await askModel([
         { role: 'system', content: TICKET_CLASSIFIER_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },
-      ],
-    });
+    ]);
 
     const parsed = readModelJson(response);
     // A reply that is not one of the five classes is a failed reading, not an answer: use the rules.

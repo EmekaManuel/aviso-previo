@@ -58,7 +58,7 @@ This document tracks every Forge manifest module, permission scope, runtime conf
 ### `llm`
 - **Doc verified**: `https://developer.atlassian.com/platform/forge/manifest-reference/modules/llm/`
 - **Purpose**: Enables native Atlassian-hosted Claude models (`@forge/llm`) without sending customer contract data outside Atlassian's compliance boundary.
-- **Model Family**: `claude`. Used for contract extraction (reads a Confluence page) and ticket classification (with a rule fallback).
+- **Model Family**: `claude`. `chat()` is given an exact supported model ID (`claude-sonnet-4-6`, then `claude-sonnet-4-5-20250929` as a fallback; see [`src/llm/chat.ts`](../src/llm/chat.ts)). A bare alias such as `claude-sonnet-4-5` is rejected by Forge. Used for contract extraction (reads a Confluence page) and ticket classification (with a rule fallback).
 
 ---
 

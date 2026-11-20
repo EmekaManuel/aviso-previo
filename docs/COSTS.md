@@ -3,8 +3,8 @@
 Every call to `@forge/llm` is logged here. Forge LLMs charge token usage directly to the developer Atlassian account.
 
 Model tiers used:
-- **Claude** (`claude-sonnet-4-5`): contract extraction. One call per "Read with Claude", and 41 per evaluation run. It is not run automatically on import.
-- **Claude** (`claude-sonnet-4-5-20250929`): ticket classification. One call the first time a ticket is assessed; later checks use the stored decision.
+- **Claude** (`claude-sonnet-4-6`, falling back to `claude-sonnet-4-5-20250929` if the first is refused): contract extraction. One call per "Read with Claude", and 41 per evaluation run. It is not run automatically on import.
+- **Claude** (same models): ticket classification. One call the first time a ticket is assessed; later checks use the stored decision.
 
 ---
 

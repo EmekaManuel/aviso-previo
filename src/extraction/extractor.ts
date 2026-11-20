@@ -1,4 +1,4 @@
-import { chat } from '@forge/llm';
+import { askModel } from '../llm/chat';
 import { containsClause } from './text';
 import { readModelJson } from '../llm/response';
 
@@ -65,13 +65,10 @@ ${contractText}
 `;
 
   try {
-    const response = await chat({
-      model: 'claude-sonnet-4-5',
-      messages: [
+    const response = await askModel([
         { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt },
-      ],
-    });
+    ]);
 
     const parsed = readModelJson(response);
     if (!('noticeUnit' in parsed) && !('isUnclear' in parsed)) {
