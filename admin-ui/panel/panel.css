@@ -15,8 +15,6 @@ html, body { background: transparent; }
 .stats dd small { display: block; font-size: 12px; color: var(--ink-3); letter-spacing: 0; margin-top: 2px; }
 .section { display: grid; gap: 10px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.linkbtn { all: unset; cursor: pointer; font-weight: 500; text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 4px; }
-.linkbtn:hover { text-decoration-color: var(--ink); }
 .draft { display: grid; gap: 12px; padding: 18px 0 0; border-top: 1px solid var(--line); }
 .draft pre { margin: 0; font: inherit; white-space: pre-wrap; color: var(--ink-2); }
 .field { display: grid; gap: 6px; }
@@ -26,3 +24,6 @@ html, body { background: transparent; }
 .foot { color: var(--ink-3); font-size: 12px; }
 .chipkey { display: inline-flex; padding: 1px 8px; border: 1px solid var(--line-strong); border-radius: 4px; font-weight: 500; font-size: 12px; }
 .pill.hold::before { background: var(--red); }
+
+.foot-block { display: grid; gap: 14px; }
+.btn svg { flex: none; }

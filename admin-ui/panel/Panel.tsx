@@ -2,18 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { api } from './api';
 import type { IssueAssessment } from './types';
 
+const RefreshIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 4v5h-5" />
+  </svg>
+);
+
 const Foot = ({ onRecheck, checking }: { onRecheck?: () => void; checking?: boolean }) => (
-  <p className="foot">
-    Sample data · Fictional. Aviso Previo summarizes your contracts. It is not legal advice.
+  <div className="foot-block">
     {onRecheck && (
-      <>
-        {' '}
-        <button className="linkbtn" onClick={onRecheck} disabled={checking} style={{ fontSize: 12 }}>
-          {checking ? 'Checking…' : 'Re-check this ticket'}
+      <div className="actions">
+        <button className="btn btn-sm" onClick={onRecheck} disabled={checking} title="Read the ticket again and re-classify it">
+          <RefreshIcon /> {checking ? 'Checking…' : 'Re-check this ticket'}
         </button>
-      </>
+      </div>
     )}
-  </p>
+    <p className="foot">Sample data · Fictional. Aviso Previo summarizes your contracts. It is not legal advice.</p>
+  </div>
 );
 
 export default function Panel() {
@@ -201,8 +206,8 @@ export default function Panel() {
 
       <div className="section">
         <div className="actions">
-          <button className="linkbtn" onClick={() => setDraft(!draft)}>{draft ? 'Hide draft notice' : 'View draft customer notice'}</button>
-          {!a.overridden && !overriding && <button className="linkbtn" onClick={() => setOverriding(true)}>Override hold</button>}
+          <button className="btn" onClick={() => setDraft(!draft)} aria-expanded={draft}>{draft ? 'Hide draft notice' : 'View draft customer notice'}</button>
+          {!a.overridden && !overriding && <button className="btn" onClick={() => setOverriding(true)}>Override hold</button>}
         </div>
 
         {draft && (
