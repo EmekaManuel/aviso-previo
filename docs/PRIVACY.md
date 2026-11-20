@@ -30,4 +30,4 @@ Aviso Previo summarizes your contracts. It is not legal advice. Review every ext
 
 ## Contact
 
-Questions about this policy: [ADD A CONTACT EMAIL BEFORE PUBLISHING]
+Questions about this policy: use the customer support contact shown on the app's installation page.
